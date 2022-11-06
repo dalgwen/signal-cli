@@ -1,6 +1,13 @@
 package org.asamk.signal.manager.api;
 
-public record Color(int color) {
+public class Color {
+
+    int color;
+
+    public Color(int color) {
+        super();
+        this.color = color;
+    }
 
     public int alpha() {
         return color >>> 24;

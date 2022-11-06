@@ -1,27 +1,28 @@
 package org.asamk.signal.manager.api;
 
-import org.whispersystems.signalservice.api.push.ServiceId;
-import org.whispersystems.signalservice.api.push.SignalServiceAddress;
-
 import java.util.Optional;
 import java.util.UUID;
 
-public record RecipientAddress(Optional<UUID> uuid, Optional<String> number) {
+import org.whispersystems.signalservice.api.push.ServiceId;
+import org.whispersystems.signalservice.api.push.SignalServiceAddress;
 
-    public static final UUID UNKNOWN_UUID = ServiceId.UNKNOWN.uuid();
+public class RecipientAddress {
+    public RecipientAddress(Optional<UUID> uuid, Optional<String> number) {
+        super();
 
-    /**
-     * Construct a RecipientAddress.
-     *
-     * @param uuid   The UUID of the user, if available.
-     * @param number The phone number of the user, if available.
-     */
-    public RecipientAddress {
         uuid = uuid.isPresent() && uuid.get().equals(UNKNOWN_UUID) ? Optional.empty() : uuid;
         if (uuid.isEmpty() && number.isEmpty()) {
             throw new AssertionError("Must have either a UUID or E164 number!");
         }
+
+        this.uuid = uuid;
+        this.number = number;
     }
+
+    Optional<UUID> uuid;
+    Optional<String> number;
+
+    public static final UUID UNKNOWN_UUID = ServiceId.UNKNOWN.uuid();
 
     public RecipientAddress(UUID uuid, String e164) {
         this(Optional.ofNullable(uuid), Optional.ofNullable(e164));
@@ -60,9 +61,8 @@ public record RecipientAddress(Optional<UUID> uuid, Optional<String> number) {
     }
 
     public boolean matches(RecipientAddress other) {
-        return (uuid.isPresent() && other.uuid.isPresent() && uuid.get().equals(other.uuid.get())) || (
-                number.isPresent() && other.number.isPresent() && number.get().equals(other.number.get())
-        );
+        return (uuid.isPresent() && other.uuid.isPresent() && uuid.get().equals(other.uuid.get()))
+                || (number.isPresent() && other.number.isPresent() && number.get().equals(other.number.get()));
     }
 
     public SignalServiceAddress toSignalServiceAddress() {

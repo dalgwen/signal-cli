@@ -10,63 +10,70 @@ import org.asamk.signal.manager.storage.recipients.RecipientId;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public record Group(
-        GroupId groupId,
-        String title,
-        String description,
-        GroupInviteLinkUrl groupInviteLinkUrl,
-        Set<RecipientAddress> members,
-        Set<RecipientAddress> pendingMembers,
-        Set<RecipientAddress> requestingMembers,
-        Set<RecipientAddress> adminMembers,
-        Set<RecipientAddress> bannedMembers,
-        boolean isBlocked,
-        int messageExpirationTimer,
-        GroupPermission permissionAddMember,
-        GroupPermission permissionEditDetails,
-        GroupPermission permissionSendMessage,
-        boolean isMember,
-        boolean isAdmin
-) {
+public class Group {
+    GroupId groupId;
+    String title;
+    String description;
+    GroupInviteLinkUrl groupInviteLinkUrl;
+    Set<RecipientAddress> members;
+    Set<RecipientAddress> pendingMembers;
+    Set<RecipientAddress> requestingMembers;
+    Set<RecipientAddress> adminMembers;
+    Set<RecipientAddress> bannedMembers;
+    boolean isBlocked;
+    int messageExpirationTimer;
+    GroupPermission permissionAddMember;
+    GroupPermission permissionEditDetails;
+    GroupPermission permissionSendMessage;
+    boolean isMember;
+    boolean isAdmin;
 
-    public static Group from(
-            final GroupInfo groupInfo, final RecipientAddressResolver recipientStore, final RecipientId selfRecipientId
-    ) {
-        return new Group(groupInfo.getGroupId(),
-                groupInfo.getTitle(),
-                groupInfo.getDescription(),
+    public Group(GroupId groupId, String title, String description,
+            GroupInviteLinkUrl groupInviteLinkUrl, Set<RecipientAddress> members, Set<RecipientAddress> pendingMembers,
+            Set<RecipientAddress> requestingMembers, Set<RecipientAddress> adminMembers,
+            Set<RecipientAddress> bannedMembers, boolean isBlocked, int messageExpirationTimer,
+            GroupPermission permissionAddMember, GroupPermission permissionEditDetails,
+            GroupPermission permissionSendMessage, boolean isMember, boolean isAdmin) {
+        super();
+        this.groupId = groupId;
+        this.title = title;
+        this.description = description;
+        this.groupInviteLinkUrl = groupInviteLinkUrl;
+        this.members = members;
+        this.pendingMembers = pendingMembers;
+        this.requestingMembers = requestingMembers;
+        this.adminMembers = adminMembers;
+        this.bannedMembers = bannedMembers;
+        this.isBlocked = isBlocked;
+        this.messageExpirationTimer = messageExpirationTimer;
+        this.permissionAddMember = permissionAddMember;
+        this.permissionEditDetails = permissionEditDetails;
+        this.permissionSendMessage = permissionSendMessage;
+        this.isMember = isMember;
+        this.isAdmin = isAdmin;
+    }
+
+    public static Group from(final GroupInfo groupInfo, final RecipientAddressResolver recipientStore,
+            final RecipientId selfRecipientId) {
+        return new Group(groupInfo.getGroupId(), groupInfo.getTitle(), groupInfo.getDescription(),
                 groupInfo.getGroupInviteLink(),
-                groupInfo.getMembers()
-                        .stream()
-                        .map(recipientStore::resolveRecipientAddress)
+                groupInfo.getMembers().stream().map(recipientStore::resolveRecipientAddress)
                         .map(org.asamk.signal.manager.storage.recipients.RecipientAddress::toApiRecipientAddress)
                         .collect(Collectors.toSet()),
-                groupInfo.getPendingMembers()
-                        .stream()
-                        .map(recipientStore::resolveRecipientAddress)
+                groupInfo.getPendingMembers().stream().map(recipientStore::resolveRecipientAddress)
                         .map(org.asamk.signal.manager.storage.recipients.RecipientAddress::toApiRecipientAddress)
                         .collect(Collectors.toSet()),
-                groupInfo.getRequestingMembers()
-                        .stream()
-                        .map(recipientStore::resolveRecipientAddress)
+                groupInfo.getRequestingMembers().stream().map(recipientStore::resolveRecipientAddress)
                         .map(org.asamk.signal.manager.storage.recipients.RecipientAddress::toApiRecipientAddress)
                         .collect(Collectors.toSet()),
-                groupInfo.getAdminMembers()
-                        .stream()
-                        .map(recipientStore::resolveRecipientAddress)
+                groupInfo.getAdminMembers().stream().map(recipientStore::resolveRecipientAddress)
                         .map(org.asamk.signal.manager.storage.recipients.RecipientAddress::toApiRecipientAddress)
                         .collect(Collectors.toSet()),
-                groupInfo.getBannedMembers()
-                        .stream()
-                        .map(recipientStore::resolveRecipientAddress)
+                groupInfo.getBannedMembers().stream().map(recipientStore::resolveRecipientAddress)
                         .map(org.asamk.signal.manager.storage.recipients.RecipientAddress::toApiRecipientAddress)
                         .collect(Collectors.toSet()),
-                groupInfo.isBlocked(),
-                groupInfo.getMessageExpirationTimer(),
-                groupInfo.getPermissionAddMember(),
-                groupInfo.getPermissionEditDetails(),
-                groupInfo.getPermissionSendMessage(),
-                groupInfo.isMember(selfRecipientId),
-                groupInfo.isAdmin(selfRecipientId));
+                groupInfo.isBlocked(), groupInfo.getMessageExpirationTimer(), groupInfo.getPermissionAddMember(),
+                groupInfo.getPermissionEditDetails(), groupInfo.getPermissionSendMessage(),
+                groupInfo.isMember(selfRecipientId), groupInfo.isAdmin(selfRecipientId));
     }
 }

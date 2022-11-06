@@ -1,16 +1,16 @@
 package org.asamk.signal.manager.storage.groups;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.asamk.signal.manager.groups.GroupId;
 import org.asamk.signal.manager.groups.GroupInviteLinkUrl;
 import org.asamk.signal.manager.groups.GroupPermission;
 import org.asamk.signal.manager.storage.recipients.RecipientId;
 import org.whispersystems.signalservice.api.push.DistributionId;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-public sealed abstract class GroupInfo permits GroupInfoV1, GroupInfoV2 {
+public abstract class GroupInfo {
 
     public abstract GroupId getGroupId();
 
@@ -62,8 +62,7 @@ public sealed abstract class GroupInfo permits GroupInfoV1, GroupInfoV2 {
 
     public Set<RecipientId> getMembersIncludingPendingWithout(RecipientId recipientId) {
         return Stream.concat(getMembers().stream(), getPendingMembers().stream())
-                .filter(member -> !member.equals(recipientId))
-                .collect(Collectors.toSet());
+                .filter(member -> !member.equals(recipientId)).collect(Collectors.toSet());
     }
 
     public boolean isMember(RecipientId recipientId) {

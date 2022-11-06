@@ -4,15 +4,27 @@ import org.asamk.signal.manager.helper.RecipientAddressResolver;
 import org.asamk.signal.manager.storage.recipients.RecipientResolver;
 import org.signal.libsignal.protocol.IdentityKey;
 
-public record SendMessageResult(
-        RecipientAddress address,
-        boolean isSuccess,
-        boolean isNetworkFailure,
-        boolean isUnregisteredFailure,
-        boolean isIdentityFailure,
-        boolean isRateLimitFailure,
-        ProofRequiredException proofRequiredFailure
-) {
+public class SendMessageResult {
+    RecipientAddress address;
+    boolean isSuccess;
+    boolean isNetworkFailure;
+    boolean isUnregisteredFailure;
+    boolean isIdentityFailure;
+    boolean isRateLimitFailure;
+    ProofRequiredException proofRequiredFailure;
+
+    public SendMessageResult(RecipientAddress address, boolean isSuccess, boolean isNetworkFailure,
+            boolean isUnregisteredFailure, boolean isIdentityFailure, boolean isRateLimitFailure,
+            ProofRequiredException proofRequiredFailure) {
+        super();
+        this.address = address;
+        this.isSuccess = isSuccess;
+        this.isNetworkFailure = isNetworkFailure;
+        this.isUnregisteredFailure = isUnregisteredFailure;
+        this.isIdentityFailure = isIdentityFailure;
+        this.isRateLimitFailure = isRateLimitFailure;
+        this.proofRequiredFailure = proofRequiredFailure;
+    }
 
     public static SendMessageResult success(RecipientAddress address) {
         return new SendMessageResult(address, true, false, false, false, false, null);
@@ -30,26 +42,22 @@ public record SendMessageResult(
         return new SendMessageResult(address, false, false, false, true, false, null);
     }
 
-    public static SendMessageResult proofRequiredFailure(
-            RecipientAddress address, ProofRequiredException proofRequiredException
-    ) {
+    public static SendMessageResult proofRequiredFailure(RecipientAddress address,
+            ProofRequiredException proofRequiredException) {
         return new SendMessageResult(address, false, true, false, false, false, proofRequiredException);
     }
 
     public static SendMessageResult from(
             final org.whispersystems.signalservice.api.messages.SendMessageResult sendMessageResult,
-            RecipientResolver recipientResolver,
-            RecipientAddressResolver addressResolver
-    ) {
-        return new SendMessageResult(addressResolver.resolveRecipientAddress(recipientResolver.resolveRecipient(
-                sendMessageResult.getAddress())).toApiRecipientAddress(),
-                sendMessageResult.isSuccess(),
-                sendMessageResult.isNetworkFailure(),
-                sendMessageResult.isUnregisteredFailure(),
-                sendMessageResult.getIdentityFailure() != null,
+            RecipientResolver recipientResolver, RecipientAddressResolver addressResolver) {
+        return new SendMessageResult(
+                addressResolver
+                        .resolveRecipientAddress(recipientResolver.resolveRecipient(sendMessageResult.getAddress()))
+                        .toApiRecipientAddress(),
+                sendMessageResult.isSuccess(), sendMessageResult.isNetworkFailure(),
+                sendMessageResult.isUnregisteredFailure(), sendMessageResult.getIdentityFailure() != null,
                 sendMessageResult.getRateLimitFailure() != null || sendMessageResult.getProofRequiredFailure() != null,
-                sendMessageResult.getProofRequiredFailure() == null
-                        ? null
+                sendMessageResult.getProofRequiredFailure() == null ? null
                         : new ProofRequiredException(sendMessageResult.getProofRequiredFailure()));
     }
 }

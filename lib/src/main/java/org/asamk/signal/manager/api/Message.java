@@ -3,20 +3,38 @@ package org.asamk.signal.manager.api;
 import java.util.List;
 import java.util.Optional;
 
-public record Message(
-        String messageText,
-        List<String> attachments,
-        List<Mention> mentions,
-        Optional<Quote> quote,
-        Optional<Sticker> sticker,
-        List<Preview> previews
-) {
+public class Message {
 
-    public record Mention(RecipientIdentifier.Single recipient, int start, int length) {}
+    public String messageText;
+    public List<String> attachments;
+    public List<Mention> mentions;
+    public Optional<Quote> quote;
+    public Optional<Sticker> sticker;
+    public List<Preview> previews;
 
-    public record Quote(long timestamp, RecipientIdentifier.Single author, String message, List<Mention> mentions) {}
+    public static class Mention {
 
-    public record Sticker(byte[] packId, int stickerId) {}
+        public RecipientIdentifier.Single recipient;
+        public int start;
+        public int length;
+    }
 
-    public record Preview(String url, String title, String description, Optional<String> image) {}
+    public class Quote {
+        public long timestamp;
+        public RecipientIdentifier.Single author;
+        public String message;
+        public List<Mention> mentions;
+    }
+
+    public static class Sticker {
+        public byte[] packId;
+        public int stickerId;
+    }
+
+    public static class Preview {
+        public String url;
+        public String title;
+        public String description;
+        public Optional<String> image;
+    }
 }

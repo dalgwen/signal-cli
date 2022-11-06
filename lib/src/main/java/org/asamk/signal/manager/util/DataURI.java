@@ -9,8 +9,19 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@SuppressWarnings({"java:S6218"})
-public record DataURI(String mediaType, Map<String, String> parameter, byte[] data) {
+@SuppressWarnings({ "java:S6218" })
+public class DataURI {
+
+    String mediaType;
+    Map<String, String> parameter;
+    byte[] data;
+
+    public DataURI(String mediaType, Map<String, String> parameter, byte[] data) {
+        super();
+        this.mediaType = mediaType;
+        this.parameter = parameter;
+        this.data = data;
+    }
 
     public static final Pattern DATA_URI_PATTERN = Pattern.compile(
             "\\Adata:(?<type>.+?/.+?)?(?<parameters>;.+?=.+?)?(?<base64>;base64)?,(?<data>.+)\\z",

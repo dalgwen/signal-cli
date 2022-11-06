@@ -1,5 +1,15 @@
 package org.asamk.signal.manager.helper;
 
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeoutException;
+
 import org.asamk.signal.manager.Manager;
 import org.asamk.signal.manager.SignalDependencies;
 import org.asamk.signal.manager.actions.HandleAction;
@@ -13,16 +23,6 @@ import org.whispersystems.signalservice.api.SignalWebSocket;
 import org.whispersystems.signalservice.api.messages.SignalServiceEnvelope;
 import org.whispersystems.signalservice.api.websocket.WebSocketConnectionState;
 import org.whispersystems.signalservice.api.websocket.WebSocketUnavailableException;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeoutException;
 
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -52,7 +52,7 @@ public class ReceiveHelper {
 
     public void setReceiveConfig(final ReceiveConfig receiveConfig) {
         this.receiveConfig = receiveConfig;
-        dependencies.setAllowStories(!receiveConfig.ignoreStories());
+        dependencies.setAllowStories(!receiveConfig.ignoreStories);
     }
 
     public void setNeedsToRetryFailedMessages(final boolean needsToRetryFailedMessages) {
@@ -87,9 +87,8 @@ public class ReceiveHelper {
         }
     }
 
-    public void receiveMessages(
-            Duration timeout, boolean returnOnTimeout, Manager.ReceiveMessageHandler handler
-    ) throws IOException {
+    public void receiveMessages(Duration timeout, boolean returnOnTimeout, Manager.ReceiveMessageHandler handler)
+            throws IOException {
         needsToRetryFailedMessages = true;
         hasCaughtUpWithOldMessages = false;
 
@@ -97,11 +96,9 @@ public class ReceiveHelper {
         Map<HandleAction, HandleAction> queuedActions = new HashMap<>();
 
         final var signalWebSocket = dependencies.getSignalWebSocket();
-        final var webSocketStateDisposable = Observable.merge(signalWebSocket.getUnidentifiedWebSocketState(),
-                        signalWebSocket.getWebSocketState())
-                .subscribeOn(Schedulers.computation())
-                .observeOn(Schedulers.computation())
-                .distinctUntilChanged()
+        final var webSocketStateDisposable = Observable
+                .merge(signalWebSocket.getUnidentifiedWebSocketState(), signalWebSocket.getWebSocketState())
+                .subscribeOn(Schedulers.computation()).observeOn(Schedulers.computation()).distinctUntilChanged()
                 .subscribe(this::onWebSocketStateChange);
         signalWebSocket.connect();
 
@@ -117,13 +114,9 @@ public class ReceiveHelper {
         }
     }
 
-    private void receiveMessagesInternal(
-            final SignalWebSocket signalWebSocket,
-            Duration timeout,
-            boolean returnOnTimeout,
-            Manager.ReceiveMessageHandler handler,
-            final Map<HandleAction, HandleAction> queuedActions
-    ) throws IOException {
+    private void receiveMessagesInternal(final SignalWebSocket signalWebSocket, Duration timeout,
+            boolean returnOnTimeout, Manager.ReceiveMessageHandler handler,
+            final Map<HandleAction, HandleAction> queuedActions) throws IOException {
         var backOffCounter = 0;
         isWaitingForMessage = false;
 
@@ -133,7 +126,7 @@ public class ReceiveHelper {
                 needsToRetryFailedMessages = false;
             }
             SignalServiceEnvelope envelope;
-            final CachedMessage[] cachedMessage = {null};
+            final CachedMessage[] cachedMessage = { null };
             final var nowMillis = System.currentTimeMillis();
             if (nowMillis - account.getLastReceiveTimestamp() > 60000) {
                 account.setLastReceiveTimestamp(nowMillis);
@@ -143,8 +136,9 @@ public class ReceiveHelper {
                 isWaitingForMessage = true;
                 var result = signalWebSocket.readOrEmpty(timeout.toMillis(), envelope1 -> {
                     isWaitingForMessage = false;
-                    final var recipientId = envelope1.hasSourceUuid() ? account.getRecipientResolver()
-                            .resolveRecipient(envelope1.getSourceAddress()) : null;
+                    final var recipientId = envelope1.hasSourceUuid()
+                            ? account.getRecipientResolver().resolveRecipient(envelope1.getSourceAddress())
+                            : null;
                     logger.trace("Storing new message from {}", recipientId);
                     // store message on disk, before acknowledging receipt to the server
                     cachedMessage[0] = account.getMessageCache().cacheMessage(envelope1, recipientId);
@@ -190,7 +184,9 @@ public class ReceiveHelper {
                 throw e;
             } catch (TimeoutException e) {
                 backOffCounter = 0;
-                if (returnOnTimeout) return;
+                if (returnOnTimeout) {
+                    return;
+                }
                 continue;
             }
 
@@ -240,9 +236,8 @@ public class ReceiveHelper {
         handleQueuedActions(queuedActions);
     }
 
-    private List<HandleAction> retryFailedReceivedMessage(
-            final Manager.ReceiveMessageHandler handler, final CachedMessage cachedMessage
-    ) {
+    private List<HandleAction> retryFailedReceivedMessage(final Manager.ReceiveMessageHandler handler,
+            final CachedMessage cachedMessage) {
         var envelope = cachedMessage.loadEnvelope();
         if (envelope == null) {
             cachedMessage.delete();

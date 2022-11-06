@@ -1,11 +1,14 @@
 package org.asamk.signal.manager.storage.groups;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.asamk.signal.manager.groups.GroupId;
 import org.asamk.signal.manager.groups.GroupIdV1;
@@ -21,45 +24,34 @@ import org.whispersystems.signalservice.api.push.DistributionId;
 import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.internal.util.Hex;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 public class LegacyGroupStore {
 
     private final static Logger logger = LoggerFactory.getLogger(LegacyGroupStore.class);
 
-    public static void migrate(
-            final Storage storage,
-            final File groupCachePath,
-            final RecipientResolver recipientResolver,
-            final GroupStore groupStore
-    ) {
+    public static void migrate(final Storage storage, final File groupCachePath,
+            final RecipientResolver recipientResolver, final GroupStore groupStore) {
         final var groups = storage.groups.stream().map(g -> {
-            if (g instanceof Storage.GroupV1 g1) {
+            if (g instanceof Storage.GroupV1) {
+                Storage.GroupV1 g1 = ((Storage.GroupV1) g);
                 final var members = g1.members.stream().map(m -> {
                     if (m.recipientId == null) {
-                        return recipientResolver.resolveRecipient(new RecipientAddress(ServiceId.parseOrNull(m.uuid),
-                                m.number));
+                        return recipientResolver
+                                .resolveRecipient(new RecipientAddress(ServiceId.parseOrNull(m.uuid), m.number));
                     }
 
                     return recipientResolver.resolveRecipient(m.recipientId);
                 }).filter(Objects::nonNull).collect(Collectors.toSet());
 
                 return new GroupInfoV1(GroupIdV1.fromBase64(g1.groupId),
-                        g1.expectedV2Id == null ? null : GroupIdV2.fromBase64(g1.expectedV2Id),
-                        g1.name,
-                        members,
-                        g1.color,
-                        g1.messageExpirationTime,
-                        g1.blocked,
-                        g1.archived);
+                        g1.expectedV2Id == null ? null : GroupIdV2.fromBase64(g1.expectedV2Id), g1.name, members,
+                        g1.color, g1.messageExpirationTime, g1.blocked, g1.archived);
             }
 
             final var g2 = (Storage.GroupV2) g;
@@ -71,14 +63,10 @@ public class LegacyGroupStore {
                 throw new AssertionError("Invalid master key for group " + groupId.toBase64());
             }
 
-            return new GroupInfoV2(groupId,
-                    masterKey,
-                    loadDecryptedGroupLocked(groupId, groupCachePath),
+            return new GroupInfoV2(groupId, masterKey, loadDecryptedGroupLocked(groupId, groupCachePath),
                     g2.distributionId == null ? DistributionId.create() : DistributionId.from(g2.distributionId),
-                    g2.blocked,
-                    g2.permissionDenied,
-                    recipientResolver);
-        }).toList();
+                    g2.blocked, g2.permissionDenied, recipientResolver);
+        }).collect(Collectors.toList());
 
         groupStore.addLegacyGroups(groups);
         removeGroupCache(groupCachePath);
@@ -127,29 +115,65 @@ public class LegacyGroupStore {
         return new File(groupCachePath, groupId.toBase64().replace("/", "_"));
     }
 
-    public record Storage(@JsonDeserialize(using = GroupsDeserializer.class) List<Record> groups) {
+    public static class Storage {
+        @JsonDeserialize(using = GroupsDeserializer.class)
+        public List<GroupVx> groups;
 
-        private record GroupV1(
-                String groupId,
-                String expectedV2Id,
-                String name,
-                String color,
-                int messageExpirationTime,
-                boolean blocked,
-                boolean archived,
-                @JsonDeserialize(using = MembersDeserializer.class) List<Member> members
-        ) {
+        private static class GroupV1 extends GroupVx {
+            String groupId;
+            String expectedV2Id;
+            String name;
+            String color;
+            int messageExpirationTime;
+            boolean blocked;
+            boolean archived;
+            @JsonDeserialize(using = MembersDeserializer.class)
+            List<Member> members;
 
-            private record Member(Long recipientId, String uuid, String number) {}
+            public GroupV1(String groupId, String expectedV2Id, String name, String color, int messageExpirationTime,
+                    boolean blocked, boolean archived, List<Member> members) {
+                super();
+                this.groupId = groupId;
+                this.expectedV2Id = expectedV2Id;
+                this.name = name;
+                this.color = color;
+                this.messageExpirationTime = messageExpirationTime;
+                this.blocked = blocked;
+                this.archived = archived;
+                this.members = members;
+            }
 
-            private record JsonRecipientAddress(String uuid, String number) {}
+            static class Member {
+                Long recipientId;
+                String uuid;
+                String number;
 
-            private static class MembersDeserializer extends JsonDeserializer<List<Member>> {
+                public Member(Long recipientId, String uuid, String number) {
+                    super();
+                    this.recipientId = recipientId;
+                    this.uuid = uuid;
+                    this.number = number;
+                }
+
+            }
+
+            static class JsonRecipientAddress {
+                String uuid;
+                String number;
+
+                public JsonRecipientAddress(String uuid, String number) {
+                    super();
+                    this.uuid = uuid;
+                    this.number = number;
+                }
+
+            }
+
+            static class MembersDeserializer extends JsonDeserializer<List<Member>> {
 
                 @Override
-                public List<Member> deserialize(
-                        JsonParser jsonParser, DeserializationContext deserializationContext
-                ) throws IOException {
+                public List<Member> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+                        throws IOException {
                     var addresses = new ArrayList<Member>();
                     JsonNode node = jsonParser.getCodec().readTree(jsonParser);
                     for (var n : node) {
@@ -168,21 +192,37 @@ public class LegacyGroupStore {
             }
         }
 
-        private record GroupV2(
-                String groupId,
-                String masterKey,
-                String distributionId,
-                @JsonInclude(JsonInclude.Include.NON_DEFAULT) boolean blocked,
-                @JsonInclude(JsonInclude.Include.NON_DEFAULT) boolean permissionDenied
-        ) {}
+        static class GroupVx {
+
+        }
+
+        static class GroupV2 extends GroupVx {
+            String groupId;
+            String masterKey;
+            String distributionId;
+            @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+            boolean blocked;
+            @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+            boolean permissionDenied;
+
+            public GroupV2(String groupId, String masterKey, String distributionId, boolean blocked,
+                    boolean permissionDenied) {
+                super();
+                this.groupId = groupId;
+                this.masterKey = masterKey;
+                this.distributionId = distributionId;
+                this.blocked = blocked;
+                this.permissionDenied = permissionDenied;
+            }
+
+        }
     }
 
     private static class GroupsDeserializer extends JsonDeserializer<List<Object>> {
 
         @Override
-        public List<Object> deserialize(
-                JsonParser jsonParser, DeserializationContext deserializationContext
-        ) throws IOException {
+        public List<Object> deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
+                throws IOException {
             var groups = new ArrayList<>();
             JsonNode node = jsonParser.getCodec().readTree(jsonParser);
             for (var n : node) {

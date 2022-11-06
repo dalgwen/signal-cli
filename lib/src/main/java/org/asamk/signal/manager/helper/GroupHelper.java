@@ -1,5 +1,19 @@
 package org.asamk.signal.manager.helper;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.asamk.signal.manager.SignalDependencies;
 import org.asamk.signal.manager.api.AttachmentInvalidException;
 import org.asamk.signal.manager.api.InactiveGroupLinkException;
@@ -47,19 +61,6 @@ import org.whispersystems.signalservice.api.push.DistributionId;
 import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.api.push.exceptions.ConflictException;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-
 public class GroupHelper {
 
     private final static Logger logger = LoggerFactory.getLogger(GroupHelper.class);
@@ -85,9 +86,8 @@ public class GroupHelper {
 
     public void downloadGroupAvatar(GroupIdV1 groupId, SignalServiceAttachment avatar) {
         try {
-            context.getAvatarStore()
-                    .storeGroupAvatar(groupId,
-                            outputStream -> context.getAttachmentHelper().retrieveAttachment(avatar, outputStream));
+            context.getAvatarStore().storeGroupAvatar(groupId,
+                    outputStream -> context.getAttachmentHelper().retrieveAttachment(avatar, outputStream));
         } catch (IOException e) {
             logger.warn("Failed to download avatar for group {}, ignoring: {}", groupId.toBase64(), e.getMessage());
         }
@@ -102,9 +102,8 @@ public class GroupHelper {
         return Optional.of(AttachmentUtils.createAttachmentStream(streamDetails, Optional.empty()));
     }
 
-    public GroupInfoV2 getOrMigrateGroup(
-            final GroupMasterKey groupMasterKey, final int revision, final byte[] signedGroupChange
-    ) {
+    public GroupInfoV2 getOrMigrateGroup(final GroupMasterKey groupMasterKey, final int revision,
+            final byte[] signedGroupChange) {
         final var groupSecretParams = GroupSecretParams.deriveFromMasterKey(groupMasterKey);
 
         var groupId = GroupUtils.getGroupIdV2(groupSecretParams);
@@ -116,8 +115,7 @@ public class GroupHelper {
             groupInfoV2 = new GroupInfoV2(groupId, groupMasterKey, account.getRecipientResolver());
             groupInfoV2.setBlocked(groupInfo.isBlocked());
             account.getGroupStore().updateGroup(groupInfoV2);
-            logger.info("Locally migrated group {} to group v2, id: {}",
-                    groupInfo.getGroupId().toBase64(),
+            logger.info("Locally migrated group {} to group v2, id: {}", groupInfo.getGroupId().toBase64(),
                     groupInfoV2.getGroupId().toBase64());
         } else if (groupInfo instanceof GroupInfoV2) {
             groupInfoV2 = (GroupInfoV2) groupInfo;
@@ -127,16 +125,15 @@ public class GroupHelper {
 
         if (groupInfoV2.getGroup() == null || groupInfoV2.getGroup().getRevision() < revision) {
             DecryptedGroup group = null;
-            if (signedGroupChange != null
-                    && groupInfoV2.getGroup() != null
+            if (signedGroupChange != null && groupInfoV2.getGroup() != null
                     && groupInfoV2.getGroup().getRevision() + 1 == revision) {
-                final var decryptedGroupChange = context.getGroupV2Helper()
-                        .getDecryptedGroupChange(signedGroupChange, groupMasterKey);
+                final var decryptedGroupChange = context.getGroupV2Helper().getDecryptedGroupChange(signedGroupChange,
+                        groupMasterKey);
 
                 if (decryptedGroupChange != null) {
                     storeProfileKeyFromChange(decryptedGroupChange);
-                    group = context.getGroupV2Helper()
-                            .getUpdatedDecryptedGroup(groupInfoV2.getGroup(), decryptedGroupChange);
+                    group = context.getGroupV2Helper().getUpdatedDecryptedGroup(groupInfoV2.getGroup(),
+                            decryptedGroupChange);
                 }
             }
             if (group == null) {
@@ -163,17 +160,16 @@ public class GroupHelper {
         return groupInfoV2;
     }
 
-    public Pair<GroupId, SendGroupMessageResults> createGroup(
-            String name, Set<RecipientId> members, File avatarFile
-    ) throws IOException, AttachmentInvalidException {
+    public Pair<GroupId, SendGroupMessageResults> createGroup(String name, Set<RecipientId> members, File avatarFile)
+            throws IOException, AttachmentInvalidException {
         final var selfRecipientId = account.getSelfRecipientId();
         if (members != null && members.contains(selfRecipientId)) {
             members = new HashSet<>(members);
             members.remove(selfRecipientId);
         }
 
-        var gv2Pair = context.getGroupV2Helper()
-                .createGroup(name == null ? "" : name, members == null ? Set.of() : members, avatarFile);
+        var gv2Pair = context.getGroupV2Helper().createGroup(name == null ? "" : name,
+                members == null ? Set.of() : members, avatarFile);
 
         if (gv2Pair == null) {
             // Failed to create v2 group, creating v1 group instead
@@ -188,78 +184,40 @@ public class GroupHelper {
 
         gv2.setGroup(decryptedGroup);
         if (avatarFile != null) {
-            context.getAvatarStore()
-                    .storeGroupAvatar(gv2.getGroupId(),
-                            outputStream -> IOUtils.copyFileToStream(avatarFile, outputStream));
+            context.getAvatarStore().storeGroupAvatar(gv2.getGroupId(),
+                    outputStream -> IOUtils.copyFileToStream(avatarFile, outputStream));
         }
 
         account.getGroupStore().updateGroup(gv2);
 
         final var messageBuilder = getGroupUpdateMessageBuilder(gv2, null);
 
-        final var result = sendGroupMessage(messageBuilder,
-                gv2.getMembersIncludingPendingWithout(selfRecipientId),
+        final var result = sendGroupMessage(messageBuilder, gv2.getMembersIncludingPendingWithout(selfRecipientId),
                 gv2.getDistributionId());
         return new Pair<>(gv2.getGroupId(), result);
     }
 
-    public SendGroupMessageResults updateGroup(
-            final GroupId groupId,
-            final String name,
-            final String description,
-            final Set<RecipientId> members,
-            final Set<RecipientId> removeMembers,
-            final Set<RecipientId> admins,
-            final Set<RecipientId> removeAdmins,
-            final Set<RecipientId> banMembers,
-            final Set<RecipientId> unbanMembers,
-            final boolean resetGroupLink,
-            final GroupLinkState groupLinkState,
-            final GroupPermission addMemberPermission,
-            final GroupPermission editDetailsPermission,
-            final File avatarFile,
-            final Integer expirationTimer,
-            final Boolean isAnnouncementGroup
-    ) throws IOException, GroupNotFoundException, AttachmentInvalidException, NotAGroupMemberException, GroupSendingNotAllowedException {
+    public SendGroupMessageResults updateGroup(final GroupId groupId, final String name, final String description,
+            final Set<RecipientId> members, final Set<RecipientId> removeMembers, final Set<RecipientId> admins,
+            final Set<RecipientId> removeAdmins, final Set<RecipientId> banMembers, final Set<RecipientId> unbanMembers,
+            final boolean resetGroupLink, final GroupLinkState groupLinkState,
+            final GroupPermission addMemberPermission, final GroupPermission editDetailsPermission,
+            final File avatarFile, final Integer expirationTimer, final Boolean isAnnouncementGroup)
+            throws IOException, GroupNotFoundException, AttachmentInvalidException, NotAGroupMemberException,
+            GroupSendingNotAllowedException {
         var group = getGroupForUpdating(groupId);
 
         if (group instanceof GroupInfoV2) {
             try {
-                return updateGroupV2((GroupInfoV2) group,
-                        name,
-                        description,
-                        members,
-                        removeMembers,
-                        admins,
-                        removeAdmins,
-                        banMembers,
-                        unbanMembers,
-                        resetGroupLink,
-                        groupLinkState,
-                        addMemberPermission,
-                        editDetailsPermission,
-                        avatarFile,
-                        expirationTimer,
-                        isAnnouncementGroup);
+                return updateGroupV2((GroupInfoV2) group, name, description, members, removeMembers, admins,
+                        removeAdmins, banMembers, unbanMembers, resetGroupLink, groupLinkState, addMemberPermission,
+                        editDetailsPermission, avatarFile, expirationTimer, isAnnouncementGroup);
             } catch (ConflictException e) {
                 // Detected conflicting update, refreshing group and trying again
                 group = getGroup(groupId, true);
-                return updateGroupV2((GroupInfoV2) group,
-                        name,
-                        description,
-                        members,
-                        removeMembers,
-                        admins,
-                        removeAdmins,
-                        banMembers,
-                        unbanMembers,
-                        resetGroupLink,
-                        groupLinkState,
-                        addMemberPermission,
-                        editDetailsPermission,
-                        avatarFile,
-                        expirationTimer,
-                        isAnnouncementGroup);
+                return updateGroupV2((GroupInfoV2) group, name, description, members, removeMembers, admins,
+                        removeAdmins, banMembers, unbanMembers, resetGroupLink, groupLinkState, addMemberPermission,
+                        editDetailsPermission, avatarFile, expirationTimer, isAnnouncementGroup);
             }
         }
 
@@ -271,10 +229,12 @@ public class GroupHelper {
         return result;
     }
 
-    public void updateGroupProfileKey(GroupIdV2 groupId) throws GroupNotFoundException, NotAGroupMemberException, IOException {
+    public void updateGroupProfileKey(GroupIdV2 groupId)
+            throws GroupNotFoundException, NotAGroupMemberException, IOException {
         var group = getGroupForUpdating(groupId);
 
-        if (group instanceof GroupInfoV2 groupInfoV2) {
+        if (group instanceof GroupInfoV2) {
+            GroupInfoV2 groupInfoV2 = (GroupInfoV2) group;
             Pair<DecryptedGroup, GroupChange> groupChangePair;
             try {
                 groupChangePair = context.getGroupV2Helper().updateSelfProfileKey(groupInfoV2);
@@ -289,23 +249,21 @@ public class GroupHelper {
         }
     }
 
-    public Pair<GroupId, SendGroupMessageResults> joinGroup(
-            GroupInviteLinkUrl inviteLinkUrl
-    ) throws IOException, InactiveGroupLinkException, PendingAdminApprovalException {
+    public Pair<GroupId, SendGroupMessageResults> joinGroup(GroupInviteLinkUrl inviteLinkUrl)
+            throws IOException, InactiveGroupLinkException, PendingAdminApprovalException {
         final DecryptedGroupJoinInfo groupJoinInfo;
         try {
-            groupJoinInfo = context.getGroupV2Helper()
-                    .getDecryptedGroupJoinInfo(inviteLinkUrl.getGroupMasterKey(), inviteLinkUrl.getPassword());
+            groupJoinInfo = context.getGroupV2Helper().getDecryptedGroupJoinInfo(inviteLinkUrl.getGroupMasterKey(),
+                    inviteLinkUrl.getPassword());
         } catch (GroupLinkNotActiveException e) {
             throw new InactiveGroupLinkException("Group link inactive (reason: " + e.getReason() + ")", e);
         }
         if (groupJoinInfo.getPendingAdminApproval()) {
             throw new PendingAdminApprovalException("You have already requested to join the group.");
         }
-        final var groupChange = context.getGroupV2Helper()
-                .joinGroup(inviteLinkUrl.getGroupMasterKey(), inviteLinkUrl.getPassword(), groupJoinInfo);
-        final var group = getOrMigrateGroup(inviteLinkUrl.getGroupMasterKey(),
-                groupJoinInfo.getRevision() + 1,
+        final var groupChange = context.getGroupV2Helper().joinGroup(inviteLinkUrl.getGroupMasterKey(),
+                inviteLinkUrl.getPassword(), groupJoinInfo);
+        final var group = getOrMigrateGroup(inviteLinkUrl.getGroupMasterKey(), groupJoinInfo.getRevision() + 1,
                 groupChange.toByteArray());
 
         if (group.getGroup() == null) {
@@ -318,9 +276,8 @@ public class GroupHelper {
         return new Pair<>(group.getGroupId(), result);
     }
 
-    public SendGroupMessageResults quitGroup(
-            final GroupId groupId, final Set<RecipientId> newAdmins
-    ) throws IOException, LastGroupAdminException, NotAGroupMemberException, GroupNotFoundException {
+    public SendGroupMessageResults quitGroup(final GroupId groupId, final Set<RecipientId> newAdmins)
+            throws IOException, LastGroupAdminException, NotAGroupMemberException, GroupNotFoundException {
         var group = getGroupForUpdating(groupId);
         if (group instanceof GroupInfoV1) {
             return quitGroupV1((GroupInfoV1) group);
@@ -350,9 +307,7 @@ public class GroupHelper {
         account.getGroupStore().updateGroup(group);
     }
 
-    public SendGroupMessageResults sendGroupInfoRequest(
-            GroupIdV1 groupId, RecipientId recipientId
-    ) throws IOException {
+    public SendGroupMessageResults sendGroupInfoRequest(GroupIdV1 groupId, RecipientId recipientId) throws IOException {
         var group = SignalServiceGroup.newBuilder(SignalServiceGroup.Type.REQUEST_INFO).withId(groupId.serialize());
 
         var messageBuilder = SignalServiceDataMessage.newBuilder().asGroupMessage(group.build());
@@ -361,9 +316,8 @@ public class GroupHelper {
         return sendGroupMessage(messageBuilder, Set.of(recipientId), null);
     }
 
-    public SendGroupMessageResults sendGroupInfoMessage(
-            GroupIdV1 groupId, RecipientId recipientId
-    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, AttachmentInvalidException {
+    public SendGroupMessageResults sendGroupInfoMessage(GroupIdV1 groupId, RecipientId recipientId)
+            throws IOException, NotAGroupMemberException, GroupNotFoundException, AttachmentInvalidException {
         GroupInfoV1 g;
         var group = getGroupForUpdating(groupId);
         if (!(group instanceof GroupInfoV1)) {
@@ -383,7 +337,8 @@ public class GroupHelper {
 
     private GroupInfo getGroup(GroupId groupId, boolean forceUpdate) {
         final var group = account.getGroupStore().getGroup(groupId);
-        if (group instanceof GroupInfoV2 groupInfoV2) {
+        if (group instanceof GroupInfoV2) {
+            GroupInfoV2 groupInfoV2 = (GroupInfoV2) group;
             if (forceUpdate || (!groupInfoV2.isPermissionDenied() && groupInfoV2.getGroup() == null)) {
                 final var groupSecretParams = GroupSecretParams.deriveFromMasterKey(groupInfoV2.getMasterKey());
                 DecryptedGroup decryptedGroup;
@@ -413,22 +368,20 @@ public class GroupHelper {
 
     private void downloadGroupAvatar(GroupIdV2 groupId, GroupSecretParams groupSecretParams, String cdnKey) {
         try {
-            context.getAvatarStore()
-                    .storeGroupAvatar(groupId,
-                            outputStream -> retrieveGroupV2Avatar(groupSecretParams, cdnKey, outputStream));
+            context.getAvatarStore().storeGroupAvatar(groupId,
+                    outputStream -> retrieveGroupV2Avatar(groupSecretParams, cdnKey, outputStream));
         } catch (IOException e) {
             logger.warn("Failed to download avatar for group {}, ignoring: {}", groupId.toBase64(), e.getMessage());
         }
     }
 
-    private void retrieveGroupV2Avatar(
-            GroupSecretParams groupSecretParams, String cdnKey, OutputStream outputStream
-    ) throws IOException {
+    private void retrieveGroupV2Avatar(GroupSecretParams groupSecretParams, String cdnKey, OutputStream outputStream)
+            throws IOException {
         var groupOperations = dependencies.getGroupsV2Operations().forGroup(groupSecretParams);
 
         var tmpFile = IOUtils.createTempFile();
-        try (InputStream input = dependencies.getMessageReceiver()
-                .retrieveGroupsV2ProfileAvatar(cdnKey, tmpFile, ServiceConfig.AVATAR_DOWNLOAD_FAILSAFE_MAX_SIZE)) {
+        try (InputStream input = dependencies.getMessageReceiver().retrieveGroupsV2ProfileAvatar(cdnKey, tmpFile,
+                ServiceConfig.AVATAR_DOWNLOAD_FAILSAFE_MAX_SIZE)) {
             var encryptedData = IOUtils.readFully(input);
 
             var decryptedData = groupOperations.decryptAvatar(encryptedData);
@@ -437,8 +390,7 @@ public class GroupHelper {
             try {
                 Files.delete(tmpFile.toPath());
             } catch (IOException e) {
-                logger.warn("Failed to delete received group avatar temp file “{}”, ignoring: {}",
-                        tmpFile,
+                logger.warn("Failed to delete received group avatar temp file “{}”, ignoring: {}", tmpFile,
                         e.getMessage());
             }
         }
@@ -472,25 +424,17 @@ public class GroupHelper {
         }
     }
 
-    private void storeProfileKeysFromHistory(
-            final GroupSecretParams groupSecretParams,
-            final GroupInfoV2 localGroup,
-            final DecryptedGroup newDecryptedGroup
-    ) throws NotAGroupMemberException {
+    private void storeProfileKeysFromHistory(final GroupSecretParams groupSecretParams, final GroupInfoV2 localGroup,
+            final DecryptedGroup newDecryptedGroup) throws NotAGroupMemberException {
         final var revisionWeWereAdded = context.getGroupV2Helper().findRevisionWeWereAdded(newDecryptedGroup);
         final var localRevision = localGroup.getGroup() == null ? 0 : localGroup.getGroup().getRevision();
         var fromRevision = Math.max(revisionWeWereAdded, localRevision);
         final var newProfileKeys = new HashMap<RecipientId, ProfileKey>();
         while (true) {
             final var page = context.getGroupV2Helper().getDecryptedGroupHistoryPage(groupSecretParams, fromRevision);
-            page.getResults()
-                    .stream()
-                    .map(DecryptedGroupHistoryEntry::getChange)
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .map(context.getGroupV2Helper()::getAuthoritativeProfileKeyFromChange)
-                    .filter(Objects::nonNull)
-                    .forEach(p -> {
+            page.getResults().stream().map(DecryptedGroupHistoryEntry::getChange).filter(Optional::isPresent)
+                    .map(Optional::get).map(context.getGroupV2Helper()::getAuthoritativeProfileKeyFromChange)
+                    .filter(Objects::nonNull).forEach(p -> {
                         final var serviceId = p.first();
                         final var profileKey = p.second();
                         final var recipientId = account.getRecipientResolver().resolveRecipient(serviceId);
@@ -520,22 +464,19 @@ public class GroupHelper {
         return g;
     }
 
-    private SendGroupMessageResults updateGroupV1(
-            final GroupInfoV1 gv1, final String name, final Set<RecipientId> members, final File avatarFile
-    ) throws IOException, AttachmentInvalidException {
+    private SendGroupMessageResults updateGroupV1(final GroupInfoV1 gv1, final String name,
+            final Set<RecipientId> members, final File avatarFile) throws IOException, AttachmentInvalidException {
         updateGroupV1Details(gv1, name, members, avatarFile);
 
         account.getGroupStore().updateGroup(gv1);
 
         var messageBuilder = getGroupUpdateMessageBuilder(gv1);
-        return sendGroupMessage(messageBuilder,
-                gv1.getMembersIncludingPendingWithout(account.getSelfRecipientId()),
+        return sendGroupMessage(messageBuilder, gv1.getMembersIncludingPendingWithout(account.getSelfRecipientId()),
                 gv1.getDistributionId());
     }
 
-    private void updateGroupV1Details(
-            final GroupInfoV1 g, final String name, final Collection<RecipientId> members, final File avatarFile
-    ) throws IOException {
+    private void updateGroupV1Details(final GroupInfoV1 g, final String name, final Collection<RecipientId> members,
+            final File avatarFile) throws IOException {
         if (name != null) {
             g.name = name;
         }
@@ -545,46 +486,34 @@ public class GroupHelper {
         }
 
         if (avatarFile != null) {
-            context.getAvatarStore()
-                    .storeGroupAvatar(g.getGroupId(),
-                            outputStream -> IOUtils.copyFileToStream(avatarFile, outputStream));
+            context.getAvatarStore().storeGroupAvatar(g.getGroupId(),
+                    outputStream -> IOUtils.copyFileToStream(avatarFile, outputStream));
         }
     }
 
     /**
      * Change the expiration timer for a group
      */
-    private void setExpirationTimer(
-            GroupInfoV1 groupInfoV1, int messageExpirationTimer
-    ) throws NotAGroupMemberException, GroupNotFoundException, IOException, GroupSendingNotAllowedException {
+    private void setExpirationTimer(GroupInfoV1 groupInfoV1, int messageExpirationTimer)
+            throws NotAGroupMemberException, GroupNotFoundException, IOException, GroupSendingNotAllowedException {
         groupInfoV1.messageExpirationTime = messageExpirationTimer;
         account.getGroupStore().updateGroup(groupInfoV1);
         sendExpirationTimerUpdate(groupInfoV1.getGroupId());
     }
 
-    private void sendExpirationTimerUpdate(GroupIdV1 groupId) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
+    private void sendExpirationTimerUpdate(GroupIdV1 groupId)
+            throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
         final var messageBuilder = SignalServiceDataMessage.newBuilder().asExpirationUpdate();
         context.getSendHelper().sendAsGroupMessage(messageBuilder, groupId);
     }
 
-    private SendGroupMessageResults updateGroupV2(
-            final GroupInfoV2 group,
-            final String name,
-            final String description,
-            final Set<RecipientId> members,
-            final Set<RecipientId> removeMembers,
-            final Set<RecipientId> admins,
-            final Set<RecipientId> removeAdmins,
-            final Set<RecipientId> banMembers,
-            final Set<RecipientId> unbanMembers,
-            final boolean resetGroupLink,
-            final GroupLinkState groupLinkState,
-            final GroupPermission addMemberPermission,
-            final GroupPermission editDetailsPermission,
-            final File avatarFile,
-            final Integer expirationTimer,
-            final Boolean isAnnouncementGroup
-    ) throws IOException {
+    private SendGroupMessageResults updateGroupV2(final GroupInfoV2 group, final String name, final String description,
+            final Set<RecipientId> members, final Set<RecipientId> removeMembers, final Set<RecipientId> admins,
+            final Set<RecipientId> removeAdmins, final Set<RecipientId> banMembers, final Set<RecipientId> unbanMembers,
+            final boolean resetGroupLink, final GroupLinkState groupLinkState,
+            final GroupPermission addMemberPermission, final GroupPermission editDetailsPermission,
+            final File avatarFile, final Integer expirationTimer, final Boolean isAnnouncementGroup)
+            throws IOException {
         SendGroupMessageResults result = null;
         final var groupV2Helper = context.getGroupV2Helper();
         if (group.isPendingMember(account.getSelfRecipientId())) {
@@ -644,8 +573,7 @@ public class GroupHelper {
             if (newAdmins.size() > 0) {
                 for (var admin : newAdmins) {
                     var groupGroupChangePair = groupV2Helper.setMemberAdmin(group, admin, true);
-                    result = sendUpdateGroupV2Message(group,
-                            groupGroupChangePair.first(),
+                    result = sendUpdateGroupV2Message(group, groupGroupChangePair.first(),
                             groupGroupChangePair.second());
                 }
             }
@@ -657,8 +585,7 @@ public class GroupHelper {
             if (existingRemoveAdmins.size() > 0) {
                 for (var admin : existingRemoveAdmins) {
                     var groupGroupChangePair = groupV2Helper.setMemberAdmin(group, admin, false);
-                    result = sendUpdateGroupV2Message(group,
-                            groupGroupChangePair.first(),
+                    result = sendUpdateGroupV2Message(group, groupGroupChangePair.first(),
                             groupGroupChangePair.second());
                 }
             }
@@ -715,9 +642,8 @@ public class GroupHelper {
         if (name != null || description != null || avatarFile != null) {
             var groupGroupChangePair = groupV2Helper.updateGroup(group, name, description, avatarFile);
             if (avatarFile != null) {
-                context.getAvatarStore()
-                        .storeGroupAvatar(group.getGroupId(),
-                                outputStream -> IOUtils.copyFileToStream(avatarFile, outputStream));
+                context.getAvatarStore().storeGroupAvatar(group.getGroupId(),
+                        outputStream -> IOUtils.copyFileToStream(avatarFile, outputStream));
             }
             result = sendUpdateGroupV2Message(group, groupGroupChangePair.first(), groupGroupChangePair.second());
         }
@@ -727,8 +653,7 @@ public class GroupHelper {
 
     private SendGroupMessageResults quitGroupV1(final GroupInfoV1 groupInfoV1) throws IOException {
         var group = SignalServiceGroup.newBuilder(SignalServiceGroup.Type.QUIT)
-                .withId(groupInfoV1.getGroupId().serialize())
-                .build();
+                .withId(groupInfoV1.getGroupId().serialize()).build();
 
         var messageBuilder = SignalServiceDataMessage.newBuilder().asGroupMessage(group);
         groupInfoV1.removeMember(account.getSelfRecipientId());
@@ -738,16 +663,13 @@ public class GroupHelper {
                 groupInfoV1.getDistributionId());
     }
 
-    private SendGroupMessageResults quitGroupV2(
-            final GroupInfoV2 groupInfoV2, final Set<RecipientId> newAdmins
-    ) throws LastGroupAdminException, IOException {
+    private SendGroupMessageResults quitGroupV2(final GroupInfoV2 groupInfoV2, final Set<RecipientId> newAdmins)
+            throws LastGroupAdminException, IOException {
         final var currentAdmins = groupInfoV2.getAdminMembers();
         newAdmins.removeAll(currentAdmins);
         newAdmins.retainAll(groupInfoV2.getMembers());
-        if (currentAdmins.contains(account.getSelfRecipientId())
-                && currentAdmins.size() == 1
-                && groupInfoV2.getMembers().size() > 1
-                && newAdmins.size() == 0) {
+        if (currentAdmins.contains(account.getSelfRecipientId()) && currentAdmins.size() == 1
+                && groupInfoV2.getMembers().size() > 1 && newAdmins.size() == 0) {
             // Last admin can't leave the group, unless she's also the last member
             throw new LastGroupAdminException(groupInfoV2.getGroupId(), groupInfoV2.getTitle());
         }
@@ -761,14 +683,11 @@ public class GroupHelper {
                 groupInfoV2.getDistributionId());
     }
 
-    private SignalServiceDataMessage.Builder getGroupUpdateMessageBuilder(GroupInfoV1 g) throws AttachmentInvalidException {
-        var group = SignalServiceGroup.newBuilder(SignalServiceGroup.Type.UPDATE)
-                .withId(g.getGroupId().serialize())
-                .withName(g.name)
-                .withMembers(g.getMembers()
-                        .stream()
-                        .map(context.getRecipientHelper()::resolveSignalServiceAddress)
-                        .toList());
+    private SignalServiceDataMessage.Builder getGroupUpdateMessageBuilder(GroupInfoV1 g)
+            throws AttachmentInvalidException {
+        var group = SignalServiceGroup.newBuilder(SignalServiceGroup.Type.UPDATE).withId(g.getGroupId().serialize())
+                .withName(g.name).withMembers(g.getMembers().stream()
+                        .map(context.getRecipientHelper()::resolveSignalServiceAddress).collect(Collectors.toList()));
 
         try {
             final var attachment = createGroupAvatarAttachment(g.getGroupId());
@@ -777,23 +696,19 @@ public class GroupHelper {
             throw new AttachmentInvalidException(g.getGroupId().toBase64(), e);
         }
 
-        return SignalServiceDataMessage.newBuilder()
-                .asGroupMessage(group.build())
+        return SignalServiceDataMessage.newBuilder().asGroupMessage(group.build())
                 .withExpiration(g.getMessageExpirationTimer());
     }
 
     private SignalServiceDataMessage.Builder getGroupUpdateMessageBuilder(GroupInfoV2 g, byte[] signedGroupChange) {
-        var group = SignalServiceGroupV2.newBuilder(g.getMasterKey())
-                .withRevision(g.getGroup().getRevision())
+        var group = SignalServiceGroupV2.newBuilder(g.getMasterKey()).withRevision(g.getGroup().getRevision())
                 .withSignedGroupChange(signedGroupChange);
-        return SignalServiceDataMessage.newBuilder()
-                .asGroupMessage(group.build())
+        return SignalServiceDataMessage.newBuilder().asGroupMessage(group.build())
                 .withExpiration(g.getMessageExpirationTimer());
     }
 
-    private SendGroupMessageResults sendUpdateGroupV2Message(
-            GroupInfoV2 group, DecryptedGroup newDecryptedGroup, GroupChange groupChange
-    ) throws IOException {
+    private SendGroupMessageResults sendUpdateGroupV2Message(GroupInfoV2 group, DecryptedGroup newDecryptedGroup,
+            GroupChange groupChange) throws IOException {
         final var selfRecipientId = account.getSelfRecipientId();
         final var members = group.getMembersIncludingPendingWithout(selfRecipientId);
         group.setGroup(newDecryptedGroup);
@@ -804,19 +719,15 @@ public class GroupHelper {
         return sendGroupMessage(messageBuilder, members, group.getDistributionId());
     }
 
-    private SendGroupMessageResults sendGroupMessage(
-            final SignalServiceDataMessage.Builder messageBuilder,
-            final Set<RecipientId> members,
-            final DistributionId distributionId
-    ) throws IOException {
+    private SendGroupMessageResults sendGroupMessage(final SignalServiceDataMessage.Builder messageBuilder,
+            final Set<RecipientId> members, final DistributionId distributionId) throws IOException {
         final var timestamp = System.currentTimeMillis();
         messageBuilder.withTimestamp(timestamp);
         final var results = context.getSendHelper().sendGroupMessage(messageBuilder.build(), members, distributionId);
         return new SendGroupMessageResults(timestamp,
                 results.stream()
                         .map(sendMessageResult -> SendMessageResult.from(sendMessageResult,
-                                account.getRecipientResolver(),
-                                account.getRecipientAddressResolver()))
-                        .toList());
+                                account.getRecipientResolver(), account.getRecipientAddressResolver()))
+                        .collect(Collectors.toList()));
     }
 }

@@ -1,13 +1,5 @@
 package org.asamk.signal.manager.storage.senderKeys;
 
-import org.asamk.signal.manager.helper.RecipientAddressResolver;
-import org.asamk.signal.manager.storage.Utils;
-import org.asamk.signal.manager.storage.recipients.RecipientResolver;
-import org.asamk.signal.manager.storage.senderKeys.SenderKeySharedStore.SenderKeySharedEntry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.whispersystems.signalservice.api.push.DistributionId;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -17,16 +9,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.asamk.signal.manager.helper.RecipientAddressResolver;
+import org.asamk.signal.manager.storage.Utils;
+import org.asamk.signal.manager.storage.recipients.RecipientResolver;
+import org.asamk.signal.manager.storage.senderKeys.SenderKeySharedStore.SenderKeySharedEntry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.whispersystems.signalservice.api.push.DistributionId;
+
 public class LegacySenderKeySharedStore {
 
     private final static Logger logger = LoggerFactory.getLogger(LegacySenderKeySharedStore.class);
 
-    public static void migrate(
-            final File file,
-            final RecipientResolver resolver,
-            final RecipientAddressResolver addressResolver,
-            final SenderKeyStore senderKeyStore
-    ) {
+    public static void migrate(final File file, final RecipientResolver resolver,
+            final RecipientAddressResolver addressResolver, final SenderKeyStore senderKeyStore) {
         final var objectMapper = Utils.createStorageObjectMapper();
         try (var inputStream = new FileInputStream(file)) {
             final var storage = objectMapper.readValue(inputStream, Storage.class);
@@ -36,7 +32,7 @@ public class LegacySenderKeySharedStore {
                 if (recipientId == null) {
                     continue;
                 }
-                final var serviceId = addressResolver.resolveRecipientAddress(recipientId).serviceId();
+                final var serviceId = addressResolver.resolveRecipientAddress(recipientId).serviceId;
                 if (serviceId.isEmpty()) {
                     continue;
                 }
@@ -61,8 +57,25 @@ public class LegacySenderKeySharedStore {
         }
     }
 
-    private record Storage(List<SharedSenderKey> sharedSenderKeys) {
+    public static class Storage {
+        List<SharedSenderKey> sharedSenderKeys;
 
-        private record SharedSenderKey(long recipientId, int deviceId, String distributionId) {}
+        public Storage(List<SharedSenderKey> sharedSenderKeys) {
+            super();
+            this.sharedSenderKeys = sharedSenderKeys;
+        }
+
+        public static class SharedSenderKey {
+            long recipientId;
+            int deviceId;
+            String distributionId;
+
+            public SharedSenderKey(long recipientId, int deviceId, String distributionId) {
+                super();
+                this.recipientId = recipientId;
+                this.deviceId = deviceId;
+                this.distributionId = distributionId;
+            }
+        }
     }
 }

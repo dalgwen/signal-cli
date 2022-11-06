@@ -35,10 +35,13 @@ public class ProofRequiredException extends Exception {
         PUSH_CHALLENGE;
 
         static Option from(org.whispersystems.signalservice.api.push.exceptions.ProofRequiredException.Option option) {
-            return switch (option) {
-                case RECAPTCHA -> RECAPTCHA;
-                case PUSH_CHALLENGE -> PUSH_CHALLENGE;
-            };
+            switch (option) {
+                case RECAPTCHA:
+                    return RECAPTCHA;
+                case PUSH_CHALLENGE:
+                default:
+                    return PUSH_CHALLENGE;
+            }
         }
     }
 }

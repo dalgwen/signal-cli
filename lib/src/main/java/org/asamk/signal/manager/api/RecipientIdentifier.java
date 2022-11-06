@@ -1,18 +1,18 @@
 package org.asamk.signal.manager.api;
 
+import java.util.UUID;
+
 import org.asamk.signal.manager.groups.GroupId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.util.PhoneNumberFormatter;
 import org.whispersystems.signalservice.api.util.UuidUtil;
 
-import java.util.UUID;
-
-public sealed interface RecipientIdentifier {
+public interface RecipientIdentifier {
 
     String getIdentifier();
 
-    record NoteToSelf() implements RecipientIdentifier {
+    static class NoteToSelf implements RecipientIdentifier {
 
         public static final NoteToSelf INSTANCE = new NoteToSelf();
 
@@ -22,7 +22,7 @@ public sealed interface RecipientIdentifier {
         }
     }
 
-    sealed interface Single extends RecipientIdentifier {
+    interface Single extends RecipientIdentifier {
 
         static Single fromString(String identifier, String localNumber) throws InvalidNumberException {
             try {
@@ -42,10 +42,10 @@ public sealed interface RecipientIdentifier {
         }
 
         static Single fromAddress(RecipientAddress address) {
-            if (address.number().isPresent()) {
-                return new Number(address.number().get());
-            } else if (address.uuid().isPresent()) {
-                return new Uuid(address.uuid().get());
+            if (address.number.isPresent()) {
+                return new Number(address.number.get());
+            } else if (address.uuid.isPresent()) {
+                return new Uuid(address.uuid.get());
             }
             throw new AssertionError("RecipientAddress without identifier");
         }
@@ -53,7 +53,13 @@ public sealed interface RecipientIdentifier {
         RecipientAddress toPartialRecipientAddress();
     }
 
-    record Uuid(UUID uuid) implements Single {
+    public static class Uuid implements Single {
+        public UUID uuid;
+
+        public Uuid(UUID uuid) {
+            super();
+            this.uuid = uuid;
+        }
 
         @Override
         public String getIdentifier() {
@@ -66,7 +72,13 @@ public sealed interface RecipientIdentifier {
         }
     }
 
-    record Number(String number) implements Single {
+    public static class Number implements Single {
+        public String number;
+
+        public Number(String number) {
+            super();
+            this.number = number;
+        }
 
         @Override
         public String getIdentifier() {
@@ -79,7 +91,8 @@ public sealed interface RecipientIdentifier {
         }
     }
 
-    record Group(GroupId groupId) implements RecipientIdentifier {
+    public static class Group implements RecipientIdentifier {
+        public GroupId groupId;
 
         @Override
         public String getIdentifier() {

@@ -1,5 +1,13 @@
 package org.asamk.signal.manager;
 
+import static org.asamk.signal.manager.config.ServiceConfig.capabilities;
+
+import java.util.Collection;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
 import org.asamk.signal.manager.config.ServiceConfig;
 import org.asamk.signal.manager.config.ServiceEnvironmentConfig;
 import org.signal.libsignal.metadata.certificate.CertificateValidator;
@@ -21,13 +29,6 @@ import org.whispersystems.signalservice.api.util.CredentialsProvider;
 import org.whispersystems.signalservice.api.util.UptimeSleepTimer;
 import org.whispersystems.signalservice.api.websocket.WebSocketFactory;
 import org.whispersystems.signalservice.internal.websocket.WebSocketConnection;
-
-import java.util.Collection;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.function.Supplier;
-
-import static org.asamk.signal.manager.config.ServiceConfig.capabilities;
 
 public class SignalDependencies {
 
@@ -55,14 +56,9 @@ public class SignalDependencies {
     private ProfileService profileService;
     private SignalServiceCipher cipher;
 
-    SignalDependencies(
-            final ServiceEnvironmentConfig serviceEnvironmentConfig,
-            final String userAgent,
-            final CredentialsProvider credentialsProvider,
-            final SignalServiceDataStore dataStore,
-            final ExecutorService executor,
-            final SignalSessionLock sessionLock
-    ) {
+    SignalDependencies(final ServiceEnvironmentConfig serviceEnvironmentConfig, final String userAgent,
+            final CredentialsProvider credentialsProvider, final SignalServiceDataStore dataStore,
+            final ExecutorService executor, final SignalSessionLock sessionLock) {
         this.serviceEnvironmentConfig = serviceEnvironmentConfig;
         this.userAgent = userAgent;
         this.credentialsProvider = credentialsProvider;
@@ -90,23 +86,15 @@ public class SignalDependencies {
 
     public SignalServiceAccountManager getAccountManager() {
         return getOrCreate(() -> accountManager,
-                () -> accountManager = new SignalServiceAccountManager(serviceEnvironmentConfig.getSignalServiceConfiguration(),
-                        credentialsProvider,
-                        userAgent,
-                        getGroupsV2Operations(),
-                        ServiceConfig.AUTOMATIC_NETWORK_RETRY));
+                () -> accountManager = new SignalServiceAccountManager(
+                        serviceEnvironmentConfig.getSignalServiceConfiguration(), credentialsProvider, userAgent,
+                        getGroupsV2Operations(), ServiceConfig.AUTOMATIC_NETWORK_RETRY));
     }
 
     public SignalServiceAccountManager createUnauthenticatedAccountManager(String number, String password) {
-        return new SignalServiceAccountManager(getServiceEnvironmentConfig().getSignalServiceConfiguration(),
-                null,
-                null,
-                number,
-                SignalServiceAddress.DEFAULT_DEVICE_ID,
-                password,
-                userAgent,
-                ServiceConfig.AUTOMATIC_NETWORK_RETRY,
-                ServiceConfig.GROUP_MAX_SIZE);
+        return new SignalServiceAccountManager(getServiceEnvironmentConfig().getSignalServiceConfiguration(), null,
+                null, number, SignalServiceAddress.DEFAULT_DEVICE_ID, password, userAgent,
+                ServiceConfig.AUTOMATIC_NETWORK_RETRY, ServiceConfig.GROUP_MAX_SIZE);
     }
 
     public GroupsV2Api getGroupsV2Api() {
@@ -116,8 +104,9 @@ public class SignalDependencies {
     public GroupsV2Operations getGroupsV2Operations() {
         return getOrCreate(() -> groupsV2Operations,
                 () -> groupsV2Operations = capabilities.isGv2()
-                        ? new GroupsV2Operations(ClientZkOperations.create(serviceEnvironmentConfig.getSignalServiceConfiguration()),
-                        ServiceConfig.GROUP_MAX_SIZE)
+                        ? new GroupsV2Operations(
+                                ClientZkOperations.create(serviceEnvironmentConfig.getSignalServiceConfiguration()),
+                                ServiceConfig.GROUP_MAX_SIZE)
                         : null);
     }
 
@@ -140,22 +129,15 @@ public class SignalDependencies {
             final var webSocketFactory = new WebSocketFactory() {
                 @Override
                 public WebSocketConnection createWebSocket() {
-                    return new WebSocketConnection("normal",
-                            serviceEnvironmentConfig.getSignalServiceConfiguration(),
-                            Optional.of(credentialsProvider),
-                            userAgent,
-                            healthMonitor,
-                            allowStories);
+                    return new WebSocketConnection("normal", serviceEnvironmentConfig.getSignalServiceConfiguration(),
+                            Optional.of(credentialsProvider), userAgent, healthMonitor, allowStories);
                 }
 
                 @Override
                 public WebSocketConnection createUnidentifiedWebSocket() {
                     return new WebSocketConnection("unidentified",
-                            serviceEnvironmentConfig.getSignalServiceConfiguration(),
-                            Optional.empty(),
-                            userAgent,
-                            healthMonitor,
-                            allowStories);
+                            serviceEnvironmentConfig.getSignalServiceConfiguration(), Optional.empty(), userAgent,
+                            healthMonitor, allowStories);
                 }
             };
             signalWebSocket = new SignalWebSocket(webSocketFactory);
@@ -165,26 +147,17 @@ public class SignalDependencies {
 
     public SignalServiceMessageReceiver getMessageReceiver() {
         return getOrCreate(() -> messageReceiver,
-                () -> messageReceiver = new SignalServiceMessageReceiver(serviceEnvironmentConfig.getSignalServiceConfiguration(),
-                        credentialsProvider,
-                        userAgent,
-                        getClientZkProfileOperations(),
-                        ServiceConfig.AUTOMATIC_NETWORK_RETRY));
+                () -> messageReceiver = new SignalServiceMessageReceiver(
+                        serviceEnvironmentConfig.getSignalServiceConfiguration(), credentialsProvider, userAgent,
+                        getClientZkProfileOperations(), ServiceConfig.AUTOMATIC_NETWORK_RETRY));
     }
 
     public SignalServiceMessageSender getMessageSender() {
         return getOrCreate(() -> messageSender,
-                () -> messageSender = new SignalServiceMessageSender(serviceEnvironmentConfig.getSignalServiceConfiguration(),
-                        credentialsProvider,
-                        dataStore,
-                        sessionLock,
-                        userAgent,
-                        getSignalWebSocket(),
-                        Optional.empty(),
-                        getClientZkProfileOperations(),
-                        executor,
-                        ServiceConfig.MAX_ENVELOPE_SIZE,
-                        ServiceConfig.AUTOMATIC_NETWORK_RETRY));
+                () -> messageSender = new SignalServiceMessageSender(
+                        serviceEnvironmentConfig.getSignalServiceConfiguration(), credentialsProvider, dataStore,
+                        sessionLock, userAgent, getSignalWebSocket(), Optional.empty(), getClientZkProfileOperations(),
+                        executor, ServiceConfig.MAX_ENVELOPE_SIZE, ServiceConfig.AUTOMATIC_NETWORK_RETRY));
     }
 
     public KeyBackupService getKeyBackupService() {
@@ -192,31 +165,26 @@ public class SignalDependencies {
                 () -> keyBackupService = getAccountManager().getKeyBackupService(ServiceConfig.getIasKeyStore(),
                         serviceEnvironmentConfig.getKeyBackupConfig().getEnclaveName(),
                         serviceEnvironmentConfig.getKeyBackupConfig().getServiceId(),
-                        serviceEnvironmentConfig.getKeyBackupConfig().getMrenclave(),
-                        10));
+                        serviceEnvironmentConfig.getKeyBackupConfig().getMrenclave(), 10));
     }
 
     public Collection<KeyBackupService> getFallbackKeyBackupServices() {
-        return serviceEnvironmentConfig.getFallbackKeyBackupConfigs()
-                .stream()
+        return serviceEnvironmentConfig.getFallbackKeyBackupConfigs().stream()
                 .map(config -> getAccountManager().getKeyBackupService(ServiceConfig.getIasKeyStore(),
-                        config.getEnclaveName(),
-                        config.getServiceId(),
-                        config.getMrenclave(),
-                        10))
-                .toList();
+                        config.getEnclaveName(), config.getServiceId(), config.getMrenclave(), 10))
+                .collect(Collectors.toList());
     }
 
     public ProfileService getProfileService() {
         return getOrCreate(() -> profileService,
-                () -> profileService = new ProfileService(getClientZkProfileOperations(),
-                        getMessageReceiver(),
+                () -> profileService = new ProfileService(getClientZkProfileOperations(), getMessageReceiver(),
                         getSignalWebSocket()));
     }
 
     public SignalServiceCipher getCipher() {
         return getOrCreate(() -> cipher, () -> {
-            final var certificateValidator = new CertificateValidator(serviceEnvironmentConfig.getUnidentifiedSenderTrustRoot());
+            final var certificateValidator = new CertificateValidator(
+                    serviceEnvironmentConfig.getUnidentifiedSenderTrustRoot());
             final var address = new SignalServiceAddress(credentialsProvider.getAci(), credentialsProvider.getE164());
             final var deviceId = credentialsProvider.getDeviceId();
             cipher = new SignalServiceCipher(address, deviceId, dataStore.aci(), sessionLock, certificateValidator);

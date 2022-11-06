@@ -1,11 +1,12 @@
 package org.asamk.signal.manager.storage.stickers;
 
-import org.asamk.signal.manager.api.StickerPackId;
-
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import org.asamk.signal.manager.api.StickerPackId;
 
 public class LegacyStickerStore {
 
@@ -21,14 +22,31 @@ public class LegacyStickerStore {
             var packKey = Base64.getDecoder().decode(s.packKey);
             var installed = s.installed;
             return new StickerPack(-1, packId, packKey, installed);
-        }).filter(Objects::nonNull).toList();
+        }).filter(Objects::nonNull).collect(Collectors.toList());
 
         stickerStore.addLegacyStickers(stickers);
     }
 
-    public record Storage(List<Sticker> stickers) {
+    public static class Storage {
 
-        private record Sticker(String packId, String packKey, boolean installed) {
+        List<Sticker> stickers;
+
+        public Storage(List<Sticker> stickers) {
+            super();
+            this.stickers = stickers;
+        }
+
+        private static class Sticker {
+            String packId;
+            String packKey;
+            boolean installed;
+
+            public Sticker(String packId, String packKey, boolean installed) {
+                super();
+                this.packId = packId;
+                this.packKey = packKey;
+                this.installed = installed;
+            }
 
         }
     }

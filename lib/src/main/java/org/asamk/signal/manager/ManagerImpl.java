@@ -16,6 +16,27 @@
  */
 package org.asamk.signal.manager;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.asamk.signal.manager.api.AttachmentInvalidException;
 import org.asamk.signal.manager.api.Configuration;
 import org.asamk.signal.manager.api.Device;
@@ -77,27 +98,6 @@ import org.whispersystems.signalservice.api.util.PhoneNumberFormatter;
 import org.whispersystems.signalservice.internal.util.Hex;
 import org.whispersystems.signalservice.internal.util.Util;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 
 class ManagerImpl implements Manager {
@@ -118,13 +118,8 @@ class ManagerImpl implements Manager {
     private final List<Runnable> addressChangedListeners = new ArrayList<>();
     private final CompositeDisposable disposable = new CompositeDisposable();
 
-    ManagerImpl(
-            SignalAccount account,
-            PathConfig pathConfig,
-            AccountFileUpdater accountFileUpdater,
-            ServiceEnvironmentConfig serviceEnvironmentConfig,
-            String userAgent
-    ) {
+    ManagerImpl(SignalAccount account, PathConfig pathConfig, AccountFileUpdater accountFileUpdater,
+            ServiceEnvironmentConfig serviceEnvironmentConfig, String userAgent) {
         this.account = account;
 
         final var sessionLock = new SignalSessionLock() {
@@ -136,15 +131,11 @@ class ManagerImpl implements Manager {
                 return LEGACY_LOCK::unlock;
             }
         };
-        this.dependencies = new SignalDependencies(serviceEnvironmentConfig,
-                userAgent,
-                account.getCredentialsProvider(),
-                account.getSignalServiceDataStore(),
-                executor,
-                sessionLock);
-        final var avatarStore = new AvatarStore(pathConfig.avatarsPath());
-        final var attachmentStore = new AttachmentStore(pathConfig.attachmentsPath());
-        final var stickerPackStore = new StickerPackStore(pathConfig.stickerPacksPath());
+        this.dependencies = new SignalDependencies(serviceEnvironmentConfig, userAgent,
+                account.getCredentialsProvider(), account.getSignalServiceDataStore(), executor, sessionLock);
+        final var avatarStore = new AvatarStore(pathConfig.avatarsPath);
+        final var attachmentStore = new AttachmentStore(pathConfig.attachmentsPath);
+        final var stickerPackStore = new StickerPackStore(pathConfig.stickerPacksPath);
 
         this.context = new Context(account, new AccountFileUpdater() {
             @Override
@@ -175,12 +166,9 @@ class ManagerImpl implements Manager {
             final var recipientId = account.getRecipientResolver().resolveRecipient(serviceId);
             final var profile = account.getProfileStore().getProfile(recipientId);
             if (profile != null) {
-                account.getProfileStore()
-                        .storeProfile(recipientId,
-                                Profile.newBuilder(profile)
-                                        .withUnidentifiedAccessMode(Profile.UnidentifiedAccessMode.UNKNOWN)
-                                        .withLastUpdateTimestamp(0)
-                                        .build());
+                account.getProfileStore().storeProfile(recipientId,
+                        Profile.newBuilder(profile).withUnidentifiedAccessMode(Profile.UnidentifiedAccessMode.UNKNOWN)
+                                .withLastUpdateTimestamp(0).build());
             }
         }));
     }
@@ -209,9 +197,7 @@ class ManagerImpl implements Manager {
         }));
 
         // Note "registeredUsers" has no optionals. It only gives us info on users who are registered
-        final var canonicalizedNumbersSet = canonicalizedNumbers.values()
-                .stream()
-                .filter(s -> !s.isEmpty())
+        final var canonicalizedNumbersSet = canonicalizedNumbers.values().stream().filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
         final var registeredUsers = context.getRecipientHelper().getRegisteredUsers(canonicalizedNumbersSet);
 
@@ -219,12 +205,10 @@ class ManagerImpl implements Manager {
             final var number = canonicalizedNumbers.get(n);
             final var user = registeredUsers.get(number);
             final var serviceId = user == null ? null : user.getServiceId();
-            final var profile = serviceId == null
-                    ? null
+            final var profile = serviceId == null ? null
                     : context.getProfileHelper()
                             .getRecipientProfile(account.getRecipientResolver().resolveRecipient(serviceId));
-            return new UserStatus(number.isEmpty() ? null : number,
-                    serviceId == null ? null : serviceId.uuid(),
+            return new UserStatus(number.isEmpty() ? null : number, serviceId == null ? null : serviceId.uuid(),
                     profile != null
                             && profile.getUnidentifiedAccessMode() == Profile.UnidentifiedAccessMode.UNRESTRICTED);
         }));
@@ -246,40 +230,34 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public void updateConfiguration(
-            Configuration configuration
-    ) throws NotPrimaryDeviceException {
+    public void updateConfiguration(Configuration configuration) throws NotPrimaryDeviceException {
         if (!account.isPrimaryDevice()) {
             throw new NotPrimaryDeviceException();
         }
 
         final var configurationStore = account.getConfigurationStore();
-        if (configuration.readReceipts().isPresent()) {
-            configurationStore.setReadReceipts(configuration.readReceipts().get());
+        if (configuration.readReceipts.isPresent()) {
+            configurationStore.setReadReceipts(configuration.readReceipts.get());
         }
-        if (configuration.unidentifiedDeliveryIndicators().isPresent()) {
-            configurationStore.setUnidentifiedDeliveryIndicators(configuration.unidentifiedDeliveryIndicators().get());
+        if (configuration.unidentifiedDeliveryIndicators.isPresent()) {
+            configurationStore.setUnidentifiedDeliveryIndicators(configuration.unidentifiedDeliveryIndicators.get());
         }
-        if (configuration.typingIndicators().isPresent()) {
-            configurationStore.setTypingIndicators(configuration.typingIndicators().get());
+        if (configuration.typingIndicators.isPresent()) {
+            configurationStore.setTypingIndicators(configuration.typingIndicators.get());
         }
-        if (configuration.linkPreviews().isPresent()) {
-            configurationStore.setLinkPreviews(configuration.linkPreviews().get());
+        if (configuration.linkPreviews.isPresent()) {
+            configurationStore.setLinkPreviews(configuration.linkPreviews.get());
         }
         context.getSyncHelper().sendConfigurationMessage();
     }
 
     @Override
     public void updateProfile(UpdateProfile updateProfile) throws IOException {
-        context.getProfileHelper()
-                .setProfile(updateProfile.getGivenName(),
-                        updateProfile.getFamilyName(),
-                        updateProfile.getAbout(),
-                        updateProfile.getAboutEmoji(),
-                        updateProfile.isDeleteAvatar()
-                                ? Optional.empty()
-                                : updateProfile.getAvatar() == null ? null : Optional.of(updateProfile.getAvatar()),
-                        updateProfile.getMobileCoinAddress());
+        context.getProfileHelper().setProfile(updateProfile.getGivenName(), updateProfile.getFamilyName(),
+                updateProfile.getAbout(), updateProfile.getAboutEmoji(),
+                updateProfile.isDeleteAvatar() ? Optional.empty()
+                        : updateProfile.getAvatar() == null ? null : Optional.of(updateProfile.getAvatar()),
+                updateProfile.getMobileCoinAddress());
         context.getSyncHelper().sendSyncFetchProfileMessage();
     }
 
@@ -314,12 +292,9 @@ class ManagerImpl implements Manager {
                     logger.debug("Failed to decrypt device name, maybe plain text?", e);
                 }
             }
-            return new Device(d.getId(),
-                    deviceName,
-                    d.getCreated(),
-                    d.getLastSeen(),
+            return new Device(d.getId(), deviceName, d.getCreated(), d.getLastSeen(),
                     d.getId() == account.getDeviceId());
-        }).toList();
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -356,7 +331,7 @@ class ManagerImpl implements Manager {
 
     @Override
     public List<Group> getGroups() {
-        return account.getGroupStore().getGroups().stream().map(this::toGroup).toList();
+        return account.getGroupStore().getGroups().stream().map(this::toGroup).collect(Collectors.toList());
     }
 
     private Group toGroup(final GroupInfo groupInfo) {
@@ -368,9 +343,9 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public SendGroupMessageResults quitGroup(
-            GroupId groupId, Set<RecipientIdentifier.Single> groupAdmins
-    ) throws GroupNotFoundException, IOException, NotAGroupMemberException, LastGroupAdminException, UnregisteredRecipientException {
+    public SendGroupMessageResults quitGroup(GroupId groupId, Set<RecipientIdentifier.Single> groupAdmins)
+            throws GroupNotFoundException, IOException, NotAGroupMemberException, LastGroupAdminException,
+            UnregisteredRecipientException {
         final var newAdmins = context.getRecipientHelper().resolveRecipients(groupAdmins);
         return context.getGroupHelper().quitGroup(groupId, newAdmins);
     }
@@ -386,153 +361,130 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public Pair<GroupId, SendGroupMessageResults> createGroup(
-            String name, Set<RecipientIdentifier.Single> members, File avatarFile
-    ) throws IOException, AttachmentInvalidException, UnregisteredRecipientException {
-        return context.getGroupHelper()
-                .createGroup(name,
-                        members == null ? null : context.getRecipientHelper().resolveRecipients(members),
-                        avatarFile);
+    public Pair<GroupId, SendGroupMessageResults> createGroup(String name, Set<RecipientIdentifier.Single> members,
+            File avatarFile) throws IOException, AttachmentInvalidException, UnregisteredRecipientException {
+        return context.getGroupHelper().createGroup(name,
+                members == null ? null : context.getRecipientHelper().resolveRecipients(members), avatarFile);
     }
 
     @Override
-    public SendGroupMessageResults updateGroup(
-            final GroupId groupId, final UpdateGroup updateGroup
-    ) throws IOException, GroupNotFoundException, AttachmentInvalidException, NotAGroupMemberException, GroupSendingNotAllowedException, UnregisteredRecipientException {
-        return context.getGroupHelper()
-                .updateGroup(groupId,
-                        updateGroup.getName(),
-                        updateGroup.getDescription(),
-                        updateGroup.getMembers() == null
-                                ? null
-                                : context.getRecipientHelper().resolveRecipients(updateGroup.getMembers()),
-                        updateGroup.getRemoveMembers() == null
-                                ? null
-                                : context.getRecipientHelper().resolveRecipients(updateGroup.getRemoveMembers()),
-                        updateGroup.getAdmins() == null
-                                ? null
-                                : context.getRecipientHelper().resolveRecipients(updateGroup.getAdmins()),
-                        updateGroup.getRemoveAdmins() == null
-                                ? null
-                                : context.getRecipientHelper().resolveRecipients(updateGroup.getRemoveAdmins()),
-                        updateGroup.getBanMembers() == null
-                                ? null
-                                : context.getRecipientHelper().resolveRecipients(updateGroup.getBanMembers()),
-                        updateGroup.getUnbanMembers() == null
-                                ? null
-                                : context.getRecipientHelper().resolveRecipients(updateGroup.getUnbanMembers()),
-                        updateGroup.isResetGroupLink(),
-                        updateGroup.getGroupLinkState(),
-                        updateGroup.getAddMemberPermission(),
-                        updateGroup.getEditDetailsPermission(),
-                        updateGroup.getAvatarFile(),
-                        updateGroup.getExpirationTimer(),
-                        updateGroup.getIsAnnouncementGroup());
+    public SendGroupMessageResults updateGroup(final GroupId groupId, final UpdateGroup updateGroup)
+            throws IOException, GroupNotFoundException, AttachmentInvalidException, NotAGroupMemberException,
+            GroupSendingNotAllowedException, UnregisteredRecipientException {
+        return context.getGroupHelper().updateGroup(groupId, updateGroup.getName(), updateGroup.getDescription(),
+                updateGroup.getMembers() == null ? null
+                        : context.getRecipientHelper().resolveRecipients(updateGroup.getMembers()),
+                updateGroup.getRemoveMembers() == null ? null
+                        : context.getRecipientHelper().resolveRecipients(updateGroup.getRemoveMembers()),
+                updateGroup.getAdmins() == null ? null
+                        : context.getRecipientHelper().resolveRecipients(updateGroup.getAdmins()),
+                updateGroup.getRemoveAdmins() == null ? null
+                        : context.getRecipientHelper().resolveRecipients(updateGroup.getRemoveAdmins()),
+                updateGroup.getBanMembers() == null ? null
+                        : context.getRecipientHelper().resolveRecipients(updateGroup.getBanMembers()),
+                updateGroup.getUnbanMembers() == null ? null
+                        : context.getRecipientHelper().resolveRecipients(updateGroup.getUnbanMembers()),
+                updateGroup.isResetGroupLink(), updateGroup.getGroupLinkState(), updateGroup.getAddMemberPermission(),
+                updateGroup.getEditDetailsPermission(), updateGroup.getAvatarFile(), updateGroup.getExpirationTimer(),
+                updateGroup.getIsAnnouncementGroup());
     }
 
     @Override
-    public Pair<GroupId, SendGroupMessageResults> joinGroup(
-            GroupInviteLinkUrl inviteLinkUrl
-    ) throws IOException, InactiveGroupLinkException, PendingAdminApprovalException {
+    public Pair<GroupId, SendGroupMessageResults> joinGroup(GroupInviteLinkUrl inviteLinkUrl)
+            throws IOException, InactiveGroupLinkException, PendingAdminApprovalException {
         return context.getGroupHelper().joinGroup(inviteLinkUrl);
     }
 
-    private SendMessageResults sendMessage(
-            SignalServiceDataMessage.Builder messageBuilder, Set<RecipientIdentifier> recipients
-    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
+    private SendMessageResults sendMessage(SignalServiceDataMessage.Builder messageBuilder,
+            Set<RecipientIdentifier> recipients)
+            throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
         var results = new HashMap<RecipientIdentifier, List<SendMessageResult>>();
         long timestamp = System.currentTimeMillis();
         messageBuilder.withTimestamp(timestamp);
         for (final var recipient : recipients) {
-            if (recipient instanceof RecipientIdentifier.Single single) {
+            if (recipient instanceof RecipientIdentifier.Single) {
                 try {
-                    final var recipientId = context.getRecipientHelper().resolveRecipient(single);
+                    final var recipientId = context.getRecipientHelper()
+                            .resolveRecipient(((RecipientIdentifier.Single) recipient));
                     final var result = context.getSendHelper().sendMessage(messageBuilder, recipientId);
                     results.put(recipient, List.of(toSendMessageResult(result)));
                 } catch (UnregisteredRecipientException e) {
-                    results.put(recipient,
-                            List.of(SendMessageResult.unregisteredFailure(single.toPartialRecipientAddress())));
+                    results.put(recipient, List.of(SendMessageResult.unregisteredFailure(
+                            ((RecipientIdentifier.Single) recipient).toPartialRecipientAddress())));
                 }
             } else if (recipient instanceof RecipientIdentifier.NoteToSelf) {
                 final var result = context.getSendHelper().sendSelfMessage(messageBuilder);
                 results.put(recipient, List.of(toSendMessageResult(result)));
-            } else if (recipient instanceof RecipientIdentifier.Group group) {
-                final var result = context.getSendHelper().sendAsGroupMessage(messageBuilder, group.groupId());
-                results.put(recipient, result.stream().map(this::toSendMessageResult).toList());
+            } else if (recipient instanceof RecipientIdentifier.Group) {
+                final var result = context.getSendHelper().sendAsGroupMessage(messageBuilder,
+                        ((RecipientIdentifier.Group) recipient).groupId);
+                results.put(recipient, result.stream().map(this::toSendMessageResult).collect(Collectors.toList()));
             }
         }
         return new SendMessageResults(timestamp, results);
     }
 
-    private SendMessageResult toSendMessageResult(final org.whispersystems.signalservice.api.messages.SendMessageResult result) {
+    private SendMessageResult toSendMessageResult(
+            final org.whispersystems.signalservice.api.messages.SendMessageResult result) {
         return SendMessageResult.from(result, account.getRecipientResolver(), account.getRecipientAddressResolver());
     }
 
-    private SendMessageResults sendTypingMessage(
-            SignalServiceTypingMessage.Action action, Set<RecipientIdentifier> recipients
-    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
+    private SendMessageResults sendTypingMessage(SignalServiceTypingMessage.Action action,
+            Set<RecipientIdentifier> recipients)
+            throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
         var results = new HashMap<RecipientIdentifier, List<SendMessageResult>>();
         final var timestamp = System.currentTimeMillis();
         for (var recipient : recipients) {
-            if (recipient instanceof RecipientIdentifier.Single single) {
+            if (recipient instanceof RecipientIdentifier.Single) {
                 final var message = new SignalServiceTypingMessage(action, timestamp, Optional.empty());
                 try {
-                    final var recipientId = context.getRecipientHelper().resolveRecipient(single);
+                    final var recipientId = context.getRecipientHelper()
+                            .resolveRecipient(((RecipientIdentifier.Single) recipient));
                     final var result = context.getSendHelper().sendTypingMessage(message, recipientId);
                     results.put(recipient, List.of(toSendMessageResult(result)));
                 } catch (UnregisteredRecipientException e) {
-                    results.put(recipient,
-                            List.of(SendMessageResult.unregisteredFailure(single.toPartialRecipientAddress())));
+                    results.put(recipient, List.of(SendMessageResult.unregisteredFailure(
+                            ((RecipientIdentifier.Single) recipient).toPartialRecipientAddress())));
                 }
             } else if (recipient instanceof RecipientIdentifier.Group) {
-                final var groupId = ((RecipientIdentifier.Group) recipient).groupId();
+                final var groupId = ((RecipientIdentifier.Group) recipient).groupId;
                 final var message = new SignalServiceTypingMessage(action, timestamp, Optional.of(groupId.serialize()));
                 final var result = context.getSendHelper().sendGroupTypingMessage(message, groupId);
-                results.put(recipient, result.stream().map(this::toSendMessageResult).toList());
+                results.put(recipient, result.stream().map(this::toSendMessageResult).collect(Collectors.toList()));
             }
         }
         return new SendMessageResults(timestamp, results);
     }
 
     @Override
-    public SendMessageResults sendTypingMessage(
-            TypingAction action, Set<RecipientIdentifier> recipients
-    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
+    public SendMessageResults sendTypingMessage(TypingAction action, Set<RecipientIdentifier> recipients)
+            throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
         return sendTypingMessage(action.toSignalService(), recipients);
     }
 
     @Override
-    public SendMessageResults sendReadReceipt(
-            RecipientIdentifier.Single sender, List<Long> messageIds
-    ) {
+    public SendMessageResults sendReadReceipt(RecipientIdentifier.Single sender, List<Long> messageIds) {
         final var timestamp = System.currentTimeMillis();
-        var receiptMessage = new SignalServiceReceiptMessage(SignalServiceReceiptMessage.Type.READ,
-                messageIds,
+        var receiptMessage = new SignalServiceReceiptMessage(SignalServiceReceiptMessage.Type.READ, messageIds,
                 timestamp);
 
         return sendReceiptMessage(sender, timestamp, receiptMessage);
     }
 
     @Override
-    public SendMessageResults sendViewedReceipt(
-            RecipientIdentifier.Single sender, List<Long> messageIds
-    ) {
+    public SendMessageResults sendViewedReceipt(RecipientIdentifier.Single sender, List<Long> messageIds) {
         final var timestamp = System.currentTimeMillis();
-        var receiptMessage = new SignalServiceReceiptMessage(SignalServiceReceiptMessage.Type.VIEWED,
-                messageIds,
+        var receiptMessage = new SignalServiceReceiptMessage(SignalServiceReceiptMessage.Type.VIEWED, messageIds,
                 timestamp);
 
         return sendReceiptMessage(sender, timestamp, receiptMessage);
     }
 
-    private SendMessageResults sendReceiptMessage(
-            final RecipientIdentifier.Single sender,
-            final long timestamp,
-            final SignalServiceReceiptMessage receiptMessage
-    ) {
+    private SendMessageResults sendReceiptMessage(final RecipientIdentifier.Single sender, final long timestamp,
+            final SignalServiceReceiptMessage receiptMessage) {
         try {
-            final var result = context.getSendHelper()
-                    .sendReceiptMessage(receiptMessage, context.getRecipientHelper().resolveRecipient(sender));
+            final var result = context.getSendHelper().sendReceiptMessage(receiptMessage,
+                    context.getRecipientHelper().resolveRecipient(sender));
             return new SendMessageResults(timestamp, Map.of(sender, List.of(toSendMessageResult(result))));
         } catch (UnregisteredRecipientException e) {
             return new SendMessageResults(timestamp,
@@ -541,9 +493,9 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public SendMessageResults sendMessage(
-            Message message, Set<RecipientIdentifier> recipients
-    ) throws IOException, AttachmentInvalidException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException, UnregisteredRecipientException, InvalidStickerException {
+    public SendMessageResults sendMessage(Message message, Set<RecipientIdentifier> recipients)
+            throws IOException, AttachmentInvalidException, NotAGroupMemberException, GroupNotFoundException,
+            GroupSendingNotAllowedException, UnregisteredRecipientException, InvalidStickerException {
         final var selfProfile = context.getProfileHelper().getSelfProfile();
         if (selfProfile == null || selfProfile.getDisplayName().isEmpty()) {
             logger.warn(
@@ -554,112 +506,97 @@ class ManagerImpl implements Manager {
         return sendMessage(messageBuilder, recipients);
     }
 
-    private void applyMessage(
-            final SignalServiceDataMessage.Builder messageBuilder, final Message message
-    ) throws AttachmentInvalidException, IOException, UnregisteredRecipientException, InvalidStickerException {
-        messageBuilder.withBody(message.messageText());
-        if (message.attachments().size() > 0) {
-            messageBuilder.withAttachments(context.getAttachmentHelper().uploadAttachments(message.attachments()));
+    private void applyMessage(final SignalServiceDataMessage.Builder messageBuilder, final Message message)
+            throws AttachmentInvalidException, IOException, UnregisteredRecipientException, InvalidStickerException {
+        messageBuilder.withBody(message.messageText);
+        if (message.attachments.size() > 0) {
+            messageBuilder.withAttachments(context.getAttachmentHelper().uploadAttachments(message.attachments));
         }
-        if (message.mentions().size() > 0) {
-            messageBuilder.withMentions(resolveMentions(message.mentions()));
+        if (message.mentions.size() > 0) {
+            messageBuilder.withMentions(resolveMentions(message.mentions));
         }
-        if (message.quote().isPresent()) {
-            final var quote = message.quote().get();
-            messageBuilder.withQuote(new SignalServiceDataMessage.Quote(quote.timestamp(),
+        if (message.quote.isPresent()) {
+            final var quote = message.quote.get();
+            messageBuilder.withQuote(new SignalServiceDataMessage.Quote(quote.timestamp,
                     context.getRecipientHelper()
-                            .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(quote.author()))
+                            .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(quote.author))
                             .getServiceId(),
-                    quote.message(),
-                    List.of(),
-                    resolveMentions(quote.mentions()),
+                    quote.message, List.of(), resolveMentions(quote.mentions),
                     SignalServiceDataMessage.Quote.Type.NORMAL));
         }
-        if (message.sticker().isPresent()) {
-            final var sticker = message.sticker().get();
-            final var packId = StickerPackId.deserialize(sticker.packId());
-            final var stickerId = sticker.stickerId();
+        if (message.sticker.isPresent()) {
+            final var sticker = message.sticker.get();
+            final var packId = StickerPackId.deserialize(sticker.packId);
+            final var stickerId = sticker.stickerId;
 
             final var stickerPack = context.getAccount().getStickerStore().getStickerPack(packId);
             if (stickerPack == null) {
                 throw new InvalidStickerException("Sticker pack not found");
             }
-            final var manifest = context.getStickerHelper().getOrRetrieveStickerPack(packId, stickerPack.packKey());
-            if (manifest.stickers().size() <= stickerId) {
+            final var manifest = context.getStickerHelper().getOrRetrieveStickerPack(packId, stickerPack.packKey);
+            if (manifest.stickers.size() <= stickerId) {
                 throw new InvalidStickerException("Sticker id not part of this pack");
             }
-            final var manifestSticker = manifest.stickers().get(stickerId);
+            final var manifestSticker = manifest.stickers.get(stickerId);
             final var streamDetails = context.getStickerPackStore().retrieveSticker(packId, stickerId);
             if (streamDetails == null) {
                 throw new InvalidStickerException("Missing local sticker file");
             }
-            messageBuilder.withSticker(new SignalServiceDataMessage.Sticker(packId.serialize(),
-                    stickerPack.packKey(),
-                    stickerId,
-                    manifestSticker.emoji(),
+            messageBuilder.withSticker(new SignalServiceDataMessage.Sticker(packId.serialize(), stickerPack.packKey,
+                    stickerId, manifestSticker.emoji,
                     AttachmentUtils.createAttachmentStream(streamDetails, Optional.empty())));
         }
-        if (message.previews().size() > 0) {
-            final var previews = new ArrayList<SignalServicePreview>(message.previews().size());
-            for (final var p : message.previews()) {
-                final var image = p.image().isPresent() ? context.getAttachmentHelper()
-                        .uploadAttachment(p.image().get()) : null;
-                previews.add(new SignalServicePreview(p.url(),
-                        p.title(),
-                        p.description(),
-                        0,
-                        Optional.ofNullable(image)));
+        if (message.previews.size() > 0) {
+            final var previews = new ArrayList<SignalServicePreview>(message.previews.size());
+            for (final var p : message.previews) {
+                final var image = p.image.isPresent() ? context.getAttachmentHelper().uploadAttachment(p.image.get())
+                        : null;
+                previews.add(new SignalServicePreview(p.url, p.title, p.description, 0, Optional.ofNullable(image)));
             }
             messageBuilder.withPreviews(previews);
         }
     }
 
-    private ArrayList<SignalServiceDataMessage.Mention> resolveMentions(final List<Message.Mention> mentionList) throws UnregisteredRecipientException {
+    private ArrayList<SignalServiceDataMessage.Mention> resolveMentions(final List<Message.Mention> mentionList)
+            throws UnregisteredRecipientException {
         final var mentions = new ArrayList<SignalServiceDataMessage.Mention>();
         for (final var m : mentionList) {
-            final var recipientId = context.getRecipientHelper().resolveRecipient(m.recipient());
-            mentions.add(new SignalServiceDataMessage.Mention(context.getRecipientHelper()
-                    .resolveSignalServiceAddress(recipientId)
-                    .getServiceId(), m.start(), m.length()));
+            final var recipientId = context.getRecipientHelper().resolveRecipient(m.recipient);
+            mentions.add(new SignalServiceDataMessage.Mention(
+                    context.getRecipientHelper().resolveSignalServiceAddress(recipientId).getServiceId(), m.start,
+                    m.length));
         }
         return mentions;
     }
 
     @Override
-    public SendMessageResults sendRemoteDeleteMessage(
-            long targetSentTimestamp, Set<RecipientIdentifier> recipients
-    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
+    public SendMessageResults sendRemoteDeleteMessage(long targetSentTimestamp, Set<RecipientIdentifier> recipients)
+            throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
         var delete = new SignalServiceDataMessage.RemoteDelete(targetSentTimestamp);
         final var messageBuilder = SignalServiceDataMessage.newBuilder().withRemoteDelete(delete);
         for (final var recipient : recipients) {
-            if (recipient instanceof RecipientIdentifier.Single r) {
+            if (recipient instanceof RecipientIdentifier.Single) {
                 try {
-                    final var recipientId = context.getRecipientHelper().resolveRecipient(r);
-                    account.getMessageSendLogStore()
-                            .deleteEntryForRecipientNonGroup(targetSentTimestamp,
-                                    account.getRecipientAddressResolver()
-                                            .resolveRecipientAddress(recipientId)
-                                            .getServiceId());
+                    final var recipientId = context.getRecipientHelper()
+                            .resolveRecipient(((RecipientIdentifier.Single) recipient));
+                    account.getMessageSendLogStore().deleteEntryForRecipientNonGroup(targetSentTimestamp,
+                            account.getRecipientAddressResolver().resolveRecipientAddress(recipientId).getServiceId());
                 } catch (UnregisteredRecipientException ignored) {
                 }
-            } else if (recipient instanceof RecipientIdentifier.Group r) {
-                account.getMessageSendLogStore().deleteEntryForGroup(targetSentTimestamp, r.groupId());
+            } else if (recipient instanceof RecipientIdentifier.Group) {
+                account.getMessageSendLogStore().deleteEntryForGroup(targetSentTimestamp,
+                        ((RecipientIdentifier.Group) recipient).groupId);
             }
         }
         return sendMessage(messageBuilder, recipients);
     }
 
     @Override
-    public SendMessageResults sendMessageReaction(
-            String emoji,
-            boolean remove,
-            RecipientIdentifier.Single targetAuthor,
-            long targetSentTimestamp,
-            Set<RecipientIdentifier> recipients
-    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException, UnregisteredRecipientException {
+    public SendMessageResults sendMessageReaction(String emoji, boolean remove, RecipientIdentifier.Single targetAuthor,
+            long targetSentTimestamp, Set<RecipientIdentifier> recipients) throws IOException, NotAGroupMemberException,
+            GroupNotFoundException, GroupSendingNotAllowedException, UnregisteredRecipientException {
         var targetAuthorRecipientId = context.getRecipientHelper().resolveRecipient(targetAuthor);
-        var reaction = new SignalServiceDataMessage.Reaction(emoji,
-                remove,
+        var reaction = new SignalServiceDataMessage.Reaction(emoji, remove,
                 context.getRecipientHelper().resolveSignalServiceAddress(targetAuthorRecipientId).getServiceId(),
                 targetSentTimestamp);
         final var messageBuilder = SignalServiceDataMessage.newBuilder().withReaction(reaction);
@@ -667,9 +604,8 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public SendMessageResults sendPaymentNotificationMessage(
-            byte[] receipt, String note, RecipientIdentifier.Single recipient
-    ) throws IOException {
+    public SendMessageResults sendPaymentNotificationMessage(byte[] receipt, String note,
+            RecipientIdentifier.Single recipient) throws IOException {
         final var paymentNotification = new SignalServiceDataMessage.PaymentNotification(receipt, note);
         final var payment = new SignalServiceDataMessage.Payment(paymentNotification);
         final var messageBuilder = SignalServiceDataMessage.newBuilder().withPayment(payment);
@@ -697,10 +633,8 @@ class ManagerImpl implements Manager {
                 } catch (UnregisteredRecipientException e) {
                     continue;
                 }
-                final var serviceId = context.getAccount()
-                        .getRecipientAddressResolver()
-                        .resolveRecipientAddress(recipientId)
-                        .getServiceId();
+                final var serviceId = context.getAccount().getRecipientAddressResolver()
+                        .resolveRecipientAddress(recipientId).getServiceId();
                 account.getAciSessionStore().deleteAllSessions(serviceId);
             }
         }
@@ -718,20 +652,18 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public void setContactName(
-            RecipientIdentifier.Single recipient, String givenName, final String familyName
-    ) throws NotPrimaryDeviceException, UnregisteredRecipientException {
+    public void setContactName(RecipientIdentifier.Single recipient, String givenName, final String familyName)
+            throws NotPrimaryDeviceException, UnregisteredRecipientException {
         if (!account.isPrimaryDevice()) {
             throw new NotPrimaryDeviceException();
         }
-        context.getContactHelper()
-                .setContactName(context.getRecipientHelper().resolveRecipient(recipient), givenName, familyName);
+        context.getContactHelper().setContactName(context.getRecipientHelper().resolveRecipient(recipient), givenName,
+                familyName);
     }
 
     @Override
-    public void setContactsBlocked(
-            Collection<RecipientIdentifier.Single> recipients, boolean blocked
-    ) throws NotPrimaryDeviceException, IOException, UnregisteredRecipientException {
+    public void setContactsBlocked(Collection<RecipientIdentifier.Single> recipients, boolean blocked)
+            throws NotPrimaryDeviceException, IOException, UnregisteredRecipientException {
         if (!account.isPrimaryDevice()) {
             throw new NotPrimaryDeviceException();
         }
@@ -747,12 +679,8 @@ class ManagerImpl implements Manager {
             }
             context.getContactHelper().setContactBlocked(recipientId, blocked);
             // if we don't have a common group with the blocked contact we need to rotate the profile key
-            shouldRotateProfileKey = blocked && (
-                    shouldRotateProfileKey || account.getGroupStore()
-                            .getGroups()
-                            .stream()
-                            .noneMatch(g -> g.isMember(selfRecipientId) && g.isMember(recipientId))
-            );
+            shouldRotateProfileKey = blocked && (shouldRotateProfileKey || account.getGroupStore().getGroups().stream()
+                    .noneMatch(g -> g.isMember(selfRecipientId) && g.isMember(recipientId)));
         }
         if (shouldRotateProfileKey) {
             context.getProfileHelper().rotateProfileKey();
@@ -761,9 +689,8 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public void setGroupsBlocked(
-            final Collection<GroupId> groupIds, final boolean blocked
-    ) throws GroupNotFoundException, NotPrimaryDeviceException, IOException {
+    public void setGroupsBlocked(final Collection<GroupId> groupIds, final boolean blocked)
+            throws GroupNotFoundException, NotPrimaryDeviceException, IOException {
         if (!account.isPrimaryDevice()) {
             throw new NotPrimaryDeviceException();
         }
@@ -785,9 +712,8 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public void setExpirationTimer(
-            RecipientIdentifier.Single recipient, int messageExpirationTimer
-    ) throws IOException, UnregisteredRecipientException {
+    public void setExpirationTimer(RecipientIdentifier.Single recipient, int messageExpirationTimer)
+            throws IOException, UnregisteredRecipientException {
         var recipientId = context.getRecipientHelper().resolveRecipient(recipient);
         context.getContactHelper().setExpirationTimer(recipientId, messageExpirationTimer);
         final var messageBuilder = SignalServiceDataMessage.newBuilder().asExpirationUpdate();
@@ -818,23 +744,22 @@ class ManagerImpl implements Manager {
     public List<org.asamk.signal.manager.api.StickerPack> getStickerPacks() {
         final var stickerPackStore = context.getStickerPackStore();
         return account.getStickerStore().getStickerPacks().stream().map(pack -> {
-            if (stickerPackStore.existsStickerPack(pack.packId())) {
+            if (stickerPackStore.existsStickerPack(pack.packId)) {
                 try {
-                    final var manifest = stickerPackStore.retrieveManifest(pack.packId());
-                    return new org.asamk.signal.manager.api.StickerPack(pack.packId(),
-                            new StickerPackUrl(pack.packId(), pack.packKey()),
-                            pack.isInstalled(),
-                            manifest.title(),
-                            manifest.author(),
-                            Optional.ofNullable(manifest.cover() == null ? null : manifest.cover().toApi()),
-                            manifest.stickers().stream().map(JsonStickerPack.JsonSticker::toApi).toList());
+                    final var manifest = stickerPackStore.retrieveManifest(pack.packId);
+                    return new org.asamk.signal.manager.api.StickerPack(pack.packId,
+                            new StickerPackUrl(pack.packId, pack.packKey), pack.isInstalled, manifest.title,
+                            manifest.author,
+                            Optional.ofNullable(manifest.cover == null ? null : manifest.cover.toApi()),
+                            manifest.stickers.stream().map(JsonStickerPack.JsonSticker::toApi)
+                                    .collect(Collectors.toList()));
                 } catch (Exception e) {
                     logger.warn("Failed to read local sticker pack manifest: {}", e.getMessage(), e);
                 }
             }
 
-            return new org.asamk.signal.manager.api.StickerPack(pack.packId(), pack.packKey(), pack.isInstalled());
-        }).toList();
+            return new org.asamk.signal.manager.api.StickerPack(pack.packId, pack.packKey, pack.isInstalled);
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -872,7 +797,8 @@ class ManagerImpl implements Manager {
             logger.debug("Starting receiving messages");
             context.getReceiveHelper().receiveMessagesContinuously((envelope, e) -> {
                 synchronized (messageHandlers) {
-                    final var handlers = Stream.concat(messageHandlers.stream(), weakHandlers.stream()).toList();
+                    final var handlers = Stream.concat(messageHandlers.stream(), weakHandlers.stream())
+                            .collect(Collectors.toList());
                     handlers.forEach(h -> {
                         try {
                             h.handleMessage(envelope, e);
@@ -945,9 +871,8 @@ class ManagerImpl implements Manager {
         receiveMessages(Duration.ofMinutes(1), false, handler);
     }
 
-    private void receiveMessages(
-            Duration timeout, boolean returnOnTimeout, ReceiveMessageHandler handler
-    ) throws IOException {
+    private void receiveMessages(Duration timeout, boolean returnOnTimeout, ReceiveMessageHandler handler)
+            throws IOException {
         if (isReceiving()) {
             throw new IllegalStateException("Already receiving message.");
         }
@@ -988,12 +913,8 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public List<Recipient> getRecipients(
-            boolean onlyContacts,
-            Optional<Boolean> blocked,
-            Collection<RecipientIdentifier.Single> recipients,
-            Optional<String> name
-    ) {
+    public List<Recipient> getRecipients(boolean onlyContacts, Optional<Boolean> blocked,
+            Collection<RecipientIdentifier.Single> recipients, Optional<String> name) {
         final var recipientIds = recipients.stream().map(a -> {
             try {
                 return context.getRecipientHelper().resolveRecipient(a);
@@ -1006,16 +927,10 @@ class ManagerImpl implements Manager {
         }
         // refresh profiles of explicitly given recipients
         context.getProfileHelper().refreshRecipientProfiles(recipientIds);
-        return account.getRecipientStore()
-                .getRecipients(onlyContacts, blocked, recipientIds, name)
-                .stream()
-                .map(s -> new Recipient(s.getRecipientId(),
-                        s.getAddress().toApiRecipientAddress(),
-                        s.getContact(),
-                        s.getProfileKey(),
-                        s.getExpiringProfileKeyCredential(),
-                        s.getProfile()))
-                .toList();
+        return account.getRecipientStore().getRecipients(onlyContacts, blocked, recipientIds, name).stream()
+                .map(s -> new Recipient(s.getRecipientId(), s.getAddress().toApiRecipientAddress(), s.getContact(),
+                        s.getProfileKey(), s.getExpiringProfileKeyCredential(), s.getProfile()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -1047,7 +962,8 @@ class ManagerImpl implements Manager {
 
     @Override
     public List<Identity> getIdentities() {
-        return account.getIdentityKeyStore().getIdentities().stream().map(this::toIdentity).toList();
+        return account.getIdentityKeyStore().getIdentities().stream().map(this::toIdentity)
+                .collect(Collectors.toList());
     }
 
     private Identity toIdentity(final IdentityInfo identityInfo) {
@@ -1059,13 +975,11 @@ class ManagerImpl implements Manager {
                 .resolveRecipientAddress(account.getRecipientResolver().resolveRecipient(identityInfo.getServiceId()));
         final var scannableFingerprint = context.getIdentityHelper()
                 .computeSafetyNumberForScanning(identityInfo.getServiceId(), identityInfo.getIdentityKey());
-        return new Identity(address.toApiRecipientAddress(),
-                identityInfo.getIdentityKey(),
-                context.getIdentityHelper()
-                        .computeSafetyNumber(identityInfo.getServiceId(), identityInfo.getIdentityKey()),
+        return new Identity(address.toApiRecipientAddress(), identityInfo.getIdentityKey(),
+                context.getIdentityHelper().computeSafetyNumber(identityInfo.getServiceId(),
+                        identityInfo.getIdentityKey()),
                 scannableFingerprint == null ? null : scannableFingerprint.getSerialized(),
-                identityInfo.getTrustLevel(),
-                identityInfo.getDateAddedTimestamp());
+                identityInfo.getTrustLevel(), identityInfo.getDateAddedTimestamp());
     }
 
     @Override
@@ -1073,8 +987,7 @@ class ManagerImpl implements Manager {
         ServiceId serviceId;
         try {
             serviceId = account.getRecipientAddressResolver()
-                    .resolveRecipientAddress(context.getRecipientHelper().resolveRecipient(recipient))
-                    .getServiceId();
+                    .resolveRecipientAddress(context.getRecipientHelper().resolveRecipient(recipient)).getServiceId();
         } catch (UnregisteredRecipientException e) {
             return List.of();
         }
@@ -1083,24 +996,21 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public boolean trustIdentityVerified(
-            RecipientIdentifier.Single recipient, byte[] fingerprint
-    ) throws UnregisteredRecipientException {
+    public boolean trustIdentityVerified(RecipientIdentifier.Single recipient, byte[] fingerprint)
+            throws UnregisteredRecipientException {
         return trustIdentity(recipient, r -> context.getIdentityHelper().trustIdentityVerified(r, fingerprint));
     }
 
     @Override
-    public boolean trustIdentityVerifiedSafetyNumber(
-            RecipientIdentifier.Single recipient, String safetyNumber
-    ) throws UnregisteredRecipientException {
+    public boolean trustIdentityVerifiedSafetyNumber(RecipientIdentifier.Single recipient, String safetyNumber)
+            throws UnregisteredRecipientException {
         return trustIdentity(recipient,
                 r -> context.getIdentityHelper().trustIdentityVerifiedSafetyNumber(r, safetyNumber));
     }
 
     @Override
-    public boolean trustIdentityVerifiedSafetyNumber(
-            RecipientIdentifier.Single recipient, byte[] safetyNumber
-    ) throws UnregisteredRecipientException {
+    public boolean trustIdentityVerifiedSafetyNumber(RecipientIdentifier.Single recipient, byte[] safetyNumber)
+            throws UnregisteredRecipientException {
         return trustIdentity(recipient,
                 r -> context.getIdentityHelper().trustIdentityVerifiedSafetyNumber(r, safetyNumber));
     }
@@ -1110,9 +1020,8 @@ class ManagerImpl implements Manager {
         return trustIdentity(recipient, r -> context.getIdentityHelper().trustIdentityAllKeys(r));
     }
 
-    private boolean trustIdentity(
-            RecipientIdentifier.Single recipient, Function<RecipientId, Boolean> trustMethod
-    ) throws UnregisteredRecipientException {
+    private boolean trustIdentity(RecipientIdentifier.Single recipient, Function<RecipientId, Boolean> trustMethod)
+            throws UnregisteredRecipientException {
         final var recipientId = context.getRecipientHelper().resolveRecipient(recipient);
         final var updated = trustMethod.apply(recipientId);
         if (updated && this.isReceiving()) {

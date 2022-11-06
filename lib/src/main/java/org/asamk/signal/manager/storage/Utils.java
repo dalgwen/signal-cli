@@ -1,21 +1,5 @@
 package org.asamk.signal.manager.storage;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-
-import org.asamk.signal.manager.storage.recipients.RecipientAddress;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.whispersystems.signalservice.api.push.ServiceId;
-import org.whispersystems.signalservice.api.push.ServiceIdType;
-import org.whispersystems.signalservice.api.util.UuidUtil;
-
 import java.io.InvalidObjectException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -26,6 +10,22 @@ import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import org.asamk.signal.manager.storage.recipients.RecipientAddress;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.whispersystems.signalservice.api.push.ServiceId;
+import org.whispersystems.signalservice.api.push.ServiceIdType;
+import org.whispersystems.signalservice.api.util.UuidUtil;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 public class Utils {
 
@@ -49,8 +49,8 @@ public class Utils {
     public static JsonNode getNotNullNode(JsonNode parent, String name) throws InvalidObjectException {
         var node = parent.get(name);
         if (node == null || node.isNull()) {
-            throw new InvalidObjectException(String.format("Incorrect file format: expected parameter %s not found ",
-                    name));
+            throw new InvalidObjectException(
+                    String.format("Incorrect file format: expected parameter %s not found ", name));
         }
 
         return node;
@@ -65,15 +65,17 @@ public class Utils {
     }
 
     public static int getAccountIdType(ServiceIdType serviceIdType) {
-        return switch (serviceIdType) {
-            case ACI -> 0;
-            case PNI -> 1;
-        };
+        switch (serviceIdType) {
+            case ACI:
+                return 0;
+            case PNI:
+            default:
+                return 1;
+        }
     }
 
-    public static <T> T executeQuerySingleRow(
-            PreparedStatement statement, ResultSetMapper<T> mapper
-    ) throws SQLException {
+    public static <T> T executeQuerySingleRow(PreparedStatement statement, ResultSetMapper<T> mapper)
+            throws SQLException {
         final var resultSet = statement.executeQuery();
         if (!resultSet.next()) {
             throw new RuntimeException("Expected a row in result set, but none found.");
@@ -81,9 +83,8 @@ public class Utils {
         return mapper.apply(resultSet);
     }
 
-    public static <T> Optional<T> executeQueryForOptional(
-            PreparedStatement statement, ResultSetMapper<T> mapper
-    ) throws SQLException {
+    public static <T> Optional<T> executeQueryForOptional(PreparedStatement statement, ResultSetMapper<T> mapper)
+            throws SQLException {
         final var resultSet = statement.executeQuery();
         if (!resultSet.next()) {
             return Optional.empty();
@@ -91,9 +92,8 @@ public class Utils {
         return Optional.ofNullable(mapper.apply(resultSet));
     }
 
-    public static <T> Stream<T> executeQueryForStream(
-            PreparedStatement statement, ResultSetMapper<T> mapper
-    ) throws SQLException {
+    public static <T> Stream<T> executeQueryForStream(PreparedStatement statement, ResultSetMapper<T> mapper)
+            throws SQLException {
         final var resultSet = statement.executeQuery();
 
         return StreamSupport.stream(new Spliterators.AbstractSpliterator<>(Long.MAX_VALUE, Spliterator.ORDERED) {

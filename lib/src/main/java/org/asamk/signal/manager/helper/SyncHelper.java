@@ -1,6 +1,15 @@
 package org.asamk.signal.manager.helper;
 
-import com.google.protobuf.ByteString;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.asamk.signal.manager.api.TrustLevel;
 import org.asamk.signal.manager.groups.GroupId;
@@ -31,16 +40,7 @@ import org.whispersystems.signalservice.api.messages.multidevice.VerifiedMessage
 import org.whispersystems.signalservice.api.push.SignalServiceAddress;
 import org.whispersystems.signalservice.internal.push.SignalServiceProtos;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import com.google.protobuf.ByteString;
 
 public class SyncHelper {
 
@@ -72,8 +72,8 @@ public class SyncHelper {
     }
 
     public void sendSyncFetchProfileMessage() {
-        context.getSendHelper()
-                .sendSyncMessage(SignalServiceSyncMessage.forFetchLatest(SignalServiceSyncMessage.FetchType.LOCAL_PROFILE));
+        context.getSendHelper().sendSyncMessage(
+                SignalServiceSyncMessage.forFetchLatest(SignalServiceSyncMessage.FetchType.LOCAL_PROFILE));
     }
 
     public void sendGroups() throws IOException {
@@ -83,31 +83,25 @@ public class SyncHelper {
             try (OutputStream fos = new FileOutputStream(groupsFile)) {
                 var out = new DeviceGroupsOutputStream(fos);
                 for (var record : account.getGroupStore().getGroups()) {
-                    if (record instanceof GroupInfoV1 groupInfo) {
+                    if (record instanceof GroupInfoV1) {
+                        GroupInfoV1 groupInfo = (GroupInfoV1) record;
                         out.write(new DeviceGroup(groupInfo.getGroupId().serialize(),
                                 Optional.ofNullable(groupInfo.name),
-                                groupInfo.getMembers()
-                                        .stream()
+                                groupInfo.getMembers().stream()
                                         .map(context.getRecipientHelper()::resolveSignalServiceAddress)
-                                        .toList(),
+                                        .collect(Collectors.toList()),
                                 context.getGroupHelper().createGroupAvatarAttachment(groupInfo.getGroupId()),
                                 groupInfo.isMember(account.getSelfRecipientId()),
-                                Optional.of(groupInfo.messageExpirationTime),
-                                Optional.ofNullable(groupInfo.color),
-                                groupInfo.blocked,
-                                Optional.empty(),
-                                groupInfo.archived));
+                                Optional.of(groupInfo.messageExpirationTime), Optional.ofNullable(groupInfo.color),
+                                groupInfo.blocked, Optional.empty(), groupInfo.archived));
                     }
                 }
             }
 
             if (groupsFile.exists() && groupsFile.length() > 0) {
                 try (var groupsFileStream = new FileInputStream(groupsFile)) {
-                    var attachmentStream = SignalServiceAttachment.newStreamBuilder()
-                            .withStream(groupsFileStream)
-                            .withContentType("application/octet-stream")
-                            .withLength(groupsFile.length())
-                            .build();
+                    var attachmentStream = SignalServiceAttachment.newStreamBuilder().withStream(groupsFileStream)
+                            .withContentType("application/octet-stream").withLength(groupsFile.length()).build();
 
                     context.getSendHelper().sendSyncMessage(SignalServiceSyncMessage.forGroups(attachmentStream));
                 }
@@ -135,51 +129,34 @@ public class SyncHelper {
                     var currentIdentity = account.getIdentityKeyStore().getIdentityInfo(address.getServiceId());
                     VerifiedMessage verifiedMessage = null;
                     if (currentIdentity != null) {
-                        verifiedMessage = new VerifiedMessage(address,
-                                currentIdentity.getIdentityKey(),
+                        verifiedMessage = new VerifiedMessage(address, currentIdentity.getIdentityKey(),
                                 currentIdentity.getTrustLevel().toVerifiedState(),
                                 currentIdentity.getDateAddedTimestamp());
                     }
 
                     var profileKey = account.getProfileStore().getProfileKey(recipientId);
-                    out.write(new DeviceContact(address,
-                            Optional.ofNullable(contact.getName()),
+                    out.write(new DeviceContact(address, Optional.ofNullable(contact.getName()),
                             createContactAvatarAttachment(new RecipientAddress(address)),
-                            Optional.ofNullable(contact.getColor()),
-                            Optional.ofNullable(verifiedMessage),
-                            Optional.ofNullable(profileKey),
-                            contact.isBlocked(),
-                            Optional.of(contact.getMessageExpirationTime()),
-                            Optional.empty(),
-                            contact.isArchived()));
+                            Optional.ofNullable(contact.getColor()), Optional.ofNullable(verifiedMessage),
+                            Optional.ofNullable(profileKey), contact.isBlocked(),
+                            Optional.of(contact.getMessageExpirationTime()), Optional.empty(), contact.isArchived()));
                 }
 
                 if (account.getProfileKey() != null) {
                     // Send our own profile key as well
-                    out.write(new DeviceContact(account.getSelfAddress(),
-                            Optional.empty(),
-                            Optional.empty(),
-                            Optional.empty(),
-                            Optional.empty(),
-                            Optional.of(account.getProfileKey()),
-                            false,
-                            Optional.empty(),
-                            Optional.empty(),
-                            false));
+                    out.write(new DeviceContact(account.getSelfAddress(), Optional.empty(), Optional.empty(),
+                            Optional.empty(), Optional.empty(), Optional.of(account.getProfileKey()), false,
+                            Optional.empty(), Optional.empty(), false));
                 }
             }
 
             if (contactsFile.exists() && contactsFile.length() > 0) {
                 try (var contactsFileStream = new FileInputStream(contactsFile)) {
-                    var attachmentStream = SignalServiceAttachment.newStreamBuilder()
-                            .withStream(contactsFileStream)
-                            .withContentType("application/octet-stream")
-                            .withLength(contactsFile.length())
-                            .build();
+                    var attachmentStream = SignalServiceAttachment.newStreamBuilder().withStream(contactsFileStream)
+                            .withContentType("application/octet-stream").withLength(contactsFile.length()).build();
 
-                    context.getSendHelper()
-                            .sendSyncMessage(SignalServiceSyncMessage.forContacts(new ContactsMessage(attachmentStream,
-                                    true)));
+                    context.getSendHelper().sendSyncMessage(
+                            SignalServiceSyncMessage.forContacts(new ContactsMessage(attachmentStream, true)));
                 }
             }
         } finally {
@@ -208,12 +185,9 @@ public class SyncHelper {
                 .sendSyncMessage(SignalServiceSyncMessage.forBlocked(new BlockedListMessage(addresses, groupIds)));
     }
 
-    public void sendVerifiedMessage(
-            SignalServiceAddress destination, IdentityKey identityKey, TrustLevel trustLevel
-    ) throws IOException {
-        var verifiedMessage = new VerifiedMessage(destination,
-                identityKey,
-                trustLevel.toVerifiedState(),
+    public void sendVerifiedMessage(SignalServiceAddress destination, IdentityKey identityKey, TrustLevel trustLevel)
+            throws IOException {
+        var verifiedMessage = new VerifiedMessage(destination, identityKey, trustLevel.toVerifiedState(),
                 System.currentTimeMillis());
         context.getSendHelper().sendSyncMessage(SignalServiceSyncMessage.forVerified(verifiedMessage));
     }
@@ -227,8 +201,7 @@ public class SyncHelper {
         final var config = account.getConfigurationStore();
         var configurationMessage = new ConfigurationMessage(Optional.ofNullable(config.getReadReceipts()),
                 Optional.ofNullable(config.getUnidentifiedDeliveryIndicators()),
-                Optional.ofNullable(config.getTypingIndicators()),
-                Optional.ofNullable(config.getLinkPreviews()));
+                Optional.ofNullable(config.getTypingIndicators()), Optional.ofNullable(config.getLinkPreviews()));
         context.getSendHelper().sendSyncMessage(SignalServiceSyncMessage.forConfiguration(configurationMessage));
     }
 
@@ -236,8 +209,7 @@ public class SyncHelper {
         final var pniIdentityKeyPair = account.getPniIdentityKeyPair();
         var pniIdentity = SignalServiceProtos.SyncMessage.PniIdentity.newBuilder()
                 .setPrivateKey(ByteString.copyFrom(pniIdentityKeyPair.getPrivateKey().serialize()))
-                .setPublicKey(ByteString.copyFrom(pniIdentityKeyPair.getPublicKey().serialize()))
-                .build();
+                .setPublicKey(ByteString.copyFrom(pniIdentityKeyPair.getPublicKey().serialize())).build();
         context.getSendHelper().sendSyncMessage(SignalServiceSyncMessage.forPniIdentity(pniIdentity));
     }
 
@@ -259,9 +231,7 @@ public class SyncHelper {
                 if (g.getName().isPresent()) {
                     syncGroup.name = g.getName().get();
                 }
-                syncGroup.addMembers(g.getMembers()
-                        .stream()
-                        .map(account.getRecipientResolver()::resolveRecipient)
+                syncGroup.addMembers(g.getMembers().stream().map(account.getRecipientResolver()::resolveRecipient)
                         .collect(Collectors.toSet()));
                 if (!g.isActive()) {
                     syncGroup.removeMember(account.getSelfRecipientId());
@@ -318,10 +288,8 @@ public class SyncHelper {
             }
             if (c.getVerified().isPresent()) {
                 final var verifiedMessage = c.getVerified().get();
-                account.getIdentityKeyStore()
-                        .setIdentityTrustLevel(verifiedMessage.getDestination().getServiceId(),
-                                verifiedMessage.getIdentityKey(),
-                                TrustLevel.fromVerifiedState(verifiedMessage.getVerified()));
+                account.getIdentityKeyStore().setIdentityTrustLevel(verifiedMessage.getDestination().getServiceId(),
+                        verifiedMessage.getIdentityKey(), TrustLevel.fromVerifiedState(verifiedMessage.getVerified()));
             }
             if (c.getExpirationTimer().isPresent()) {
                 builder.withMessageExpirationTime(c.getExpirationTimer().get());
@@ -342,7 +310,8 @@ public class SyncHelper {
         context.getSendHelper().sendSyncMessage(message);
     }
 
-    private Optional<SignalServiceAttachmentStream> createContactAvatarAttachment(RecipientAddress address) throws IOException {
+    private Optional<SignalServiceAttachmentStream> createContactAvatarAttachment(RecipientAddress address)
+            throws IOException {
         final var streamDetails = context.getAvatarStore().retrieveContactAvatar(address);
         if (streamDetails == null) {
             return Optional.empty();
@@ -353,9 +322,8 @@ public class SyncHelper {
 
     private void downloadContactAvatar(SignalServiceAttachment avatar, RecipientAddress address) {
         try {
-            context.getAvatarStore()
-                    .storeContactAvatar(address,
-                            outputStream -> context.getAttachmentHelper().retrieveAttachment(avatar, outputStream));
+            context.getAvatarStore().storeContactAvatar(address,
+                    outputStream -> context.getAttachmentHelper().retrieveAttachment(avatar, outputStream));
         } catch (IOException e) {
             logger.warn("Failed to download avatar for contact {}, ignoring: {}", address, e.getMessage());
         }

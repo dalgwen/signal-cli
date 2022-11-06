@@ -18,34 +18,51 @@ public enum TrustLevel {
     }
 
     public static TrustLevel fromIdentityState(ContactRecord.IdentityState identityState) {
-        return switch (identityState) {
-            case DEFAULT -> TRUSTED_UNVERIFIED;
-            case UNVERIFIED -> UNTRUSTED;
-            case VERIFIED -> TRUSTED_VERIFIED;
-            case UNRECOGNIZED -> null;
-        };
+        switch (identityState) {
+            case DEFAULT:
+                return TRUSTED_UNVERIFIED;
+            case UNVERIFIED:
+                return UNTRUSTED;
+            case VERIFIED:
+                return TRUSTED_VERIFIED;
+            case UNRECOGNIZED:
+                return null;
+        }
+        return null;
     }
 
     public static TrustLevel fromVerifiedState(VerifiedMessage.VerifiedState verifiedState) {
-        return switch (verifiedState) {
-            case DEFAULT -> TRUSTED_UNVERIFIED;
-            case UNVERIFIED -> UNTRUSTED;
-            case VERIFIED -> TRUSTED_VERIFIED;
-        };
+        switch (verifiedState) {
+            case DEFAULT:
+                return TRUSTED_UNVERIFIED;
+            case UNVERIFIED:
+                return UNTRUSTED;
+            case VERIFIED:
+                return TRUSTED_VERIFIED;
+        }
+        return null;
     }
 
     public VerifiedMessage.VerifiedState toVerifiedState() {
-        return switch (this) {
-            case TRUSTED_UNVERIFIED -> VerifiedMessage.VerifiedState.DEFAULT;
-            case UNTRUSTED -> VerifiedMessage.VerifiedState.UNVERIFIED;
-            case TRUSTED_VERIFIED -> VerifiedMessage.VerifiedState.VERIFIED;
-        };
+        switch (this) {
+            case TRUSTED_UNVERIFIED:
+                return VerifiedMessage.VerifiedState.DEFAULT;
+            case UNTRUSTED:
+                return VerifiedMessage.VerifiedState.UNVERIFIED;
+            case TRUSTED_VERIFIED:
+                return VerifiedMessage.VerifiedState.VERIFIED;
+        }
+        return null;
     }
 
     public boolean isTrusted() {
-        return switch (this) {
-            case TRUSTED_UNVERIFIED, TRUSTED_VERIFIED -> true;
-            case UNTRUSTED -> false;
-        };
+        switch (this) {
+            case TRUSTED_UNVERIFIED:
+            case TRUSTED_VERIFIED:
+                return true;
+            case UNTRUSTED:
+                return false;
+        }
+        return false;
     }
 }

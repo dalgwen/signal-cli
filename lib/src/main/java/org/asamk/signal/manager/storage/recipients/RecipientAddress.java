@@ -1,20 +1,20 @@
 package org.asamk.signal.manager.storage.recipients;
 
+import java.util.Optional;
+
 import org.whispersystems.signalservice.api.push.PNI;
 import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.api.push.SignalServiceAddress;
 
-import java.util.Optional;
+public class RecipientAddress {
 
-public record RecipientAddress(Optional<ServiceId> serviceId, Optional<PNI> pni, Optional<String> number) {
+    public Optional<ServiceId> serviceId;
+    public Optional<PNI> pni;
+    public Optional<String> number;
 
-    /**
-     * Construct a RecipientAddress.
-     *
-     * @param serviceId The ACI or PNI of the user, if available.
-     * @param number    The phone number of the user, if available.
-     */
-    public RecipientAddress {
+    public RecipientAddress(Optional<ServiceId> serviceId, Optional<PNI> pni, Optional<String> number) {
+        super();
+
         if (serviceId.isPresent() && serviceId.get().equals(ServiceId.UNKNOWN)) {
             serviceId = Optional.empty();
         }
@@ -27,6 +27,11 @@ public record RecipientAddress(Optional<ServiceId> serviceId, Optional<PNI> pni,
         if (serviceId.isEmpty() && number.isEmpty()) {
             throw new AssertionError("Must have either a ServiceId or E164 number!");
         }
+
+        this.serviceId = serviceId;
+        this.pni = pni;
+        this.number = number;
+
     }
 
     public RecipientAddress(Optional<ServiceId> serviceId, Optional<String> number) {
@@ -75,18 +80,10 @@ public record RecipientAddress(Optional<ServiceId> serviceId, Optional<PNI> pni,
 
     public boolean matches(RecipientAddress other) {
         return (serviceId.isPresent() && other.serviceId.isPresent() && serviceId.get().equals(other.serviceId.get()))
-                || (
-                pni.isPresent() && other.serviceId.isPresent() && pni.get().equals(other.serviceId.get())
-        )
-                || (
-                serviceId.isPresent() && other.pni.isPresent() && serviceId.get().equals(other.pni.get())
-        )
-                || (
-                pni.isPresent() && other.pni.isPresent() && pni.get().equals(other.pni.get())
-        )
-                || (
-                number.isPresent() && other.number.isPresent() && number.get().equals(other.number.get())
-        );
+                || (pni.isPresent() && other.serviceId.isPresent() && pni.get().equals(other.serviceId.get()))
+                || (serviceId.isPresent() && other.pni.isPresent() && serviceId.get().equals(other.pni.get()))
+                || (pni.isPresent() && other.pni.isPresent() && pni.get().equals(other.pni.get()))
+                || (number.isPresent() && other.number.isPresent() && number.get().equals(other.number.get()));
     }
 
     public SignalServiceAddress toSignalServiceAddress() {
@@ -94,6 +91,6 @@ public record RecipientAddress(Optional<ServiceId> serviceId, Optional<PNI> pni,
     }
 
     public org.asamk.signal.manager.api.RecipientAddress toApiRecipientAddress() {
-        return new org.asamk.signal.manager.api.RecipientAddress(serviceId().map(ServiceId::uuid), number());
+        return new org.asamk.signal.manager.api.RecipientAddress(serviceId.map(ServiceId::uuid), number);
     }
 }

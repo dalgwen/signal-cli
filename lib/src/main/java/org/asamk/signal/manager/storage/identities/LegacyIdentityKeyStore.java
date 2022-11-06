@@ -1,6 +1,15 @@
 package org.asamk.signal.manager.storage.identities;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
+import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.asamk.signal.manager.api.TrustLevel;
 import org.asamk.signal.manager.helper.RecipientAddressResolver;
@@ -12,27 +21,15 @@ import org.signal.libsignal.protocol.InvalidKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-import java.util.Objects;
-import java.util.regex.Pattern;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class LegacyIdentityKeyStore {
 
     private final static Logger logger = LoggerFactory.getLogger(LegacyIdentityKeyStore.class);
     private static final ObjectMapper objectMapper = org.asamk.signal.manager.storage.Utils.createStorageObjectMapper();
 
-    public static void migrate(
-            final File identitiesPath,
-            final RecipientResolver resolver,
-            final RecipientAddressResolver addressResolver,
-            final IdentityKeyStore identityKeyStore
-    ) {
+    public static void migrate(final File identitiesPath, final RecipientResolver resolver,
+            final RecipientAddressResolver addressResolver, final IdentityKeyStore identityKeyStore) {
         final var identities = getIdentities(identitiesPath, resolver, addressResolver);
         identityKeyStore.addLegacyIdentities(identities);
         removeIdentityFiles(identitiesPath);
@@ -40,20 +37,16 @@ public class LegacyIdentityKeyStore {
 
     static final Pattern identityFileNamePattern = Pattern.compile("(\\d+)");
 
-    private static List<IdentityInfo> getIdentities(
-            final File identitiesPath, final RecipientResolver resolver, final RecipientAddressResolver addressResolver
-    ) {
+    private static List<IdentityInfo> getIdentities(final File identitiesPath, final RecipientResolver resolver,
+            final RecipientAddressResolver addressResolver) {
         final var files = identitiesPath.listFiles();
         if (files == null) {
             return List.of();
         }
-        return Arrays.stream(files)
-                .filter(f -> identityFileNamePattern.matcher(f.getName()).matches())
-                .map(f -> resolver.resolveRecipient(Long.parseLong(f.getName())))
-                .filter(Objects::nonNull)
+        return Arrays.stream(files).filter(f -> identityFileNamePattern.matcher(f.getName()).matches())
+                .map(f -> resolver.resolveRecipient(Long.parseLong(f.getName()))).filter(Objects::nonNull)
                 .map(recipientId -> loadIdentityLocked(recipientId, addressResolver, identitiesPath))
-                .filter(Objects::nonNull)
-                .toList();
+                .filter(Objects::nonNull).collect(Collectors.toList());
     }
 
     private static File getIdentityFile(final RecipientId recipientId, final File identitiesPath) {
@@ -65,9 +58,8 @@ public class LegacyIdentityKeyStore {
         return new File(identitiesPath, String.valueOf(recipientId.id()));
     }
 
-    private static IdentityInfo loadIdentityLocked(
-            final RecipientId recipientId, RecipientAddressResolver addressResolver, final File identitiesPath
-    ) {
+    private static IdentityInfo loadIdentityLocked(final RecipientId recipientId,
+            RecipientAddressResolver addressResolver, final File identitiesPath) {
         final var file = getIdentityFile(recipientId, identitiesPath);
         if (!file.exists()) {
             return null;
@@ -75,9 +67,9 @@ public class LegacyIdentityKeyStore {
         try (var inputStream = new FileInputStream(file)) {
             var storage = objectMapper.readValue(inputStream, IdentityStorage.class);
 
-            var id = new IdentityKey(Base64.getDecoder().decode(storage.identityKey()));
-            var trustLevel = TrustLevel.fromInt(storage.trustLevel());
-            var added = storage.addedTimestamp();
+            var id = new IdentityKey(Base64.getDecoder().decode(storage.identityKey));
+            var trustLevel = TrustLevel.fromInt(storage.trustLevel);
+            var added = storage.addedTimestamp;
 
             final var serviceId = addressResolver.resolveRecipientAddress(recipientId).getServiceId();
             return new IdentityInfo(serviceId, id, trustLevel, added);
@@ -107,5 +99,17 @@ public class LegacyIdentityKeyStore {
         }
     }
 
-    private record IdentityStorage(String identityKey, int trustLevel, long addedTimestamp) {}
+    private static class IdentityStorage {
+        String identityKey;
+        int trustLevel;
+        long addedTimestamp;
+
+        public IdentityStorage(String identityKey, int trustLevel, long addedTimestamp) {
+            super();
+            this.identityKey = identityKey;
+            this.trustLevel = trustLevel;
+            this.addedTimestamp = addedTimestamp;
+        }
+
+    }
 }

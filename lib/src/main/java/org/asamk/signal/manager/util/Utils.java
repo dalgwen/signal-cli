@@ -1,14 +1,5 @@
 package org.asamk.signal.manager.util;
 
-import org.asamk.signal.manager.api.Pair;
-import org.asamk.signal.manager.storage.recipients.RecipientAddress;
-import org.signal.libsignal.protocol.IdentityKey;
-import org.signal.libsignal.protocol.fingerprint.Fingerprint;
-import org.signal.libsignal.protocol.fingerprint.NumericFingerprintGenerator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.whispersystems.signalservice.api.util.StreamDetails;
-
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -30,6 +21,15 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.asamk.signal.manager.api.Pair;
+import org.asamk.signal.manager.storage.recipients.RecipientAddress;
+import org.signal.libsignal.protocol.IdentityKey;
+import org.signal.libsignal.protocol.fingerprint.Fingerprint;
+import org.signal.libsignal.protocol.fingerprint.NumericFingerprintGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.whispersystems.signalservice.api.util.StreamDetails;
+
 public class Utils {
 
     private final static Logger logger = LoggerFactory.getLogger(Utils.class);
@@ -50,8 +50,8 @@ public class Utils {
     public static Pair<StreamDetails, Optional<String>> createStreamDetailsFromDataURI(final String dataURI) {
         final DataURI uri = DataURI.of(dataURI);
 
-        return new Pair<>(new StreamDetails(new ByteArrayInputStream(uri.data()), uri.mediaType(), uri.data().length),
-                Optional.ofNullable(uri.parameter().get("filename")));
+        return new Pair<>(new StreamDetails(new ByteArrayInputStream(uri.data), uri.mediaType, uri.data.length),
+                Optional.ofNullable(uri.parameter.get("filename")));
     }
 
     public static StreamDetails createStreamDetailsFromFile(final File file) throws IOException {
@@ -71,23 +71,18 @@ public class Utils {
         }
     }
 
-    public static Fingerprint computeSafetyNumber(
-            boolean isUuidCapable,
-            RecipientAddress ownAddress,
-            IdentityKey ownIdentityKey,
-            RecipientAddress theirAddress,
-            IdentityKey theirIdentityKey
-    ) {
+    public static Fingerprint computeSafetyNumber(boolean isUuidCapable, RecipientAddress ownAddress,
+            IdentityKey ownIdentityKey, RecipientAddress theirAddress, IdentityKey theirIdentityKey) {
         int version;
         byte[] ownId;
         byte[] theirId;
 
-        if (!isUuidCapable && ownAddress.number().isPresent() && theirAddress.number().isPresent()) {
+        if (!isUuidCapable && ownAddress.number.isPresent() && theirAddress.number.isPresent()) {
             // Version 1: E164 user
             version = 1;
-            ownId = ownAddress.number().get().getBytes();
-            theirId = theirAddress.number().get().getBytes();
-        } else if (isUuidCapable && theirAddress.serviceId().isPresent()) {
+            ownId = ownAddress.number.get().getBytes();
+            theirId = theirAddress.number.get().getBytes();
+        } else if (isUuidCapable && theirAddress.serviceId.isPresent()) {
             // Version 2: UUID user
             version = 2;
             ownId = ownAddress.getServiceId().toByteArray();
@@ -96,10 +91,7 @@ public class Utils {
             return null;
         }
 
-        return new NumericFingerprintGenerator(5200).createFor(version,
-                ownId,
-                ownIdentityKey,
-                theirId,
+        return new NumericFingerprintGenerator(5200).createFor(version, ownId, ownIdentityKey, theirId,
                 theirIdentityKey);
     }
 
@@ -124,13 +116,15 @@ public class Utils {
     public static <L, R, T> Stream<T> zip(Stream<L> leftStream, Stream<R> rightStream, BiFunction<L, R, T> combiner) {
         Spliterator<L> lefts = leftStream.spliterator();
         Spliterator<R> rights = rightStream.spliterator();
-        return StreamSupport.stream(new Spliterators.AbstractSpliterator<>(Long.min(lefts.estimateSize(),
-                rights.estimateSize()), lefts.characteristics() & rights.characteristics()) {
-            @Override
-            public boolean tryAdvance(Consumer<? super T> action) {
-                return lefts.tryAdvance(left -> rights.tryAdvance(right -> action.accept(combiner.apply(left, right))));
-            }
-        }, leftStream.isParallel() || rightStream.isParallel());
+        return StreamSupport
+                .stream(new Spliterators.AbstractSpliterator<>(Long.min(lefts.estimateSize(), rights.estimateSize()),
+                        lefts.characteristics() & rights.characteristics()) {
+                    @Override
+                    public boolean tryAdvance(Consumer<? super T> action) {
+                        return lefts.tryAdvance(
+                                left -> rights.tryAdvance(right -> action.accept(combiner.apply(left, right))));
+                    }
+                }, leftStream.isParallel() || rightStream.isParallel());
     }
 
     public static Map<String, String> getQueryMap(String query) {

@@ -1,5 +1,11 @@
 package org.asamk.signal.manager.helper;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
 import org.asamk.signal.manager.DeviceLinkInfo;
 import org.asamk.signal.manager.SignalDependencies;
 import org.asamk.signal.manager.api.CaptchaRequiredException;
@@ -25,12 +31,6 @@ import org.whispersystems.signalservice.api.push.exceptions.AuthorizationFailedE
 import org.whispersystems.signalservice.api.push.exceptions.DeprecatedVersionException;
 import org.whispersystems.signalservice.api.util.DeviceNameUtil;
 import org.whispersystems.signalservice.internal.push.OutgoingPushMessage;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 public class AccountHelper {
 
@@ -73,8 +73,7 @@ public class AccountHelper {
             if (!account.isPrimaryDevice() && account.getPniIdentityKeyPair() == null) {
                 context.getSyncHelper().requestSyncPniIdentity();
             }
-            if (account.getPreviousStorageVersion() < 4
-                    && account.isPrimaryDevice()
+            if (account.getPreviousStorageVersion() < 4 && account.isPrimaryDevice()
                     && account.getRegistrationLockPin() != null) {
                 migrateRegistrationPin();
             }
@@ -113,12 +112,8 @@ public class AccountHelper {
         context.getAccountFileUpdater().updateAccountIdentifiers(account.getNumber(), account.getAci());
     }
 
-    public void setPni(
-            final PNI updatedPni,
-            final IdentityKeyPair pniIdentityKeyPair,
-            final SignedPreKeyRecord pniSignedPreKey,
-            final int localPniRegistrationId
-    ) throws IOException {
+    public void setPni(final PNI updatedPni, final IdentityKeyPair pniIdentityKeyPair,
+            final SignedPreKeyRecord pniSignedPreKey, final int localPniRegistrationId) throws IOException {
         account.setPni(updatedPni, pniIdentityKeyPair, pniSignedPreKey, localPniRegistrationId);
         context.getPreKeyHelper().refreshPreKeysIfNecessary(ServiceIdType.PNI);
         if (account.getPni() == null || !account.getPni().equals(updatedPni)) {
@@ -126,30 +121,22 @@ public class AccountHelper {
         }
     }
 
-    public void startChangeNumber(
-            String newNumber, String captcha, boolean voiceVerification
-    ) throws IOException, CaptchaRequiredException, NonNormalizedPhoneNumberException {
+    public void startChangeNumber(String newNumber, String captcha, boolean voiceVerification)
+            throws IOException, CaptchaRequiredException, NonNormalizedPhoneNumberException {
         final var accountManager = dependencies.createUnauthenticatedAccountManager(newNumber, account.getPassword());
         NumberVerificationUtils.requestVerificationCode(accountManager, captcha, voiceVerification);
     }
 
-    public void finishChangeNumber(
-            String newNumber, String verificationCode, String pin
-    ) throws IncorrectPinException, PinLockedException, IOException {
+    public void finishChangeNumber(String newNumber, String verificationCode, String pin)
+            throws IncorrectPinException, PinLockedException, IOException {
         // TODO create new PNI identity key
         final List<OutgoingPushMessage> deviceMessages = null;
         final Map<String, SignedPreKeyEntity> devicePniSignedPreKeys = null;
         final Map<String, Integer> pniRegistrationIds = null;
-        final var result = NumberVerificationUtils.verifyNumber(verificationCode,
-                pin,
-                context.getPinHelper(),
+        final var result = NumberVerificationUtils.verifyNumber(verificationCode, pin, context.getPinHelper(),
                 (verificationCode1, registrationLock) -> dependencies.getAccountManager()
-                        .changeNumber(new ChangePhoneNumberRequest(newNumber,
-                                verificationCode1,
-                                registrationLock,
-                                account.getPniIdentityKeyPair().getPublicKey(),
-                                deviceMessages,
-                                devicePniSignedPreKeys,
+                        .changeNumber(new ChangePhoneNumberRequest(newNumber, verificationCode1, registrationLock,
+                                account.getPniIdentityKeyPair().getPublicKey(), deviceMessages, devicePniSignedPreKeys,
                                 pniRegistrationIds)));
         // TODO handle response
         updateSelfIdentifiers(newNumber, account.getAci(), PNI.parseOrThrow(result.first().getPni()));
@@ -162,31 +149,20 @@ public class AccountHelper {
     }
 
     public void updateAccountAttributes() throws IOException {
-        dependencies.getAccountManager()
-                .setAccountAttributes(null,
-                        account.getLocalRegistrationId(),
-                        true,
-                        null,
-                        account.getRegistrationLock(),
-                        account.getSelfUnidentifiedAccessKey(),
-                        account.isUnrestrictedUnidentifiedAccess(),
-                        ServiceConfig.capabilities,
-                        account.isDiscoverableByPhoneNumber(),
-                        account.getEncryptedDeviceName(),
-                        account.getLocalPniRegistrationId());
+        dependencies.getAccountManager().setAccountAttributes(null, account.getLocalRegistrationId(), true, null,
+                account.getRegistrationLock(), account.getSelfUnidentifiedAccessKey(),
+                account.isUnrestrictedUnidentifiedAccess(), ServiceConfig.capabilities,
+                account.isDiscoverableByPhoneNumber(), account.getEncryptedDeviceName(),
+                account.getLocalPniRegistrationId());
     }
 
     public void addDevice(DeviceLinkInfo deviceLinkInfo) throws IOException, InvalidDeviceLinkException {
         var verificationCode = dependencies.getAccountManager().getNewDeviceVerificationCode();
 
         try {
-            dependencies.getAccountManager()
-                    .addDevice(deviceLinkInfo.deviceIdentifier(),
-                            deviceLinkInfo.deviceKey(),
-                            account.getAciIdentityKeyPair(),
-                            account.getPniIdentityKeyPair(),
-                            account.getProfileKey(),
-                            verificationCode);
+            dependencies.getAccountManager().addDevice(deviceLinkInfo.deviceIdentifier, deviceLinkInfo.deviceKey,
+                    account.getAciIdentityKeyPair(), account.getPniIdentityKeyPair(), account.getProfileKey(),
+                    verificationCode);
         } catch (InvalidKeyException e) {
             throw new InvalidDeviceLinkException("Invalid device link", e);
         }
@@ -223,7 +199,8 @@ public class AccountHelper {
     public void unregister() throws IOException {
         // When setting an empty GCM id, the Signal-Server also sets the fetchesMessages property to false.
         // If this is the primary device, other users can't send messages to this number anymore.
-        // If this is a linked device, other users can still send messages, but this device doesn't receive them anymore.
+        // If this is a linked device, other users can still send messages, but this device doesn't receive them
+        // anymore.
         dependencies.getAccountManager().setGcmId(Optional.empty());
 
         account.setRegistered(false);

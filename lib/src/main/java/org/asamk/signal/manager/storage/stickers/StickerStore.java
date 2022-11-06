@@ -1,15 +1,16 @@
 package org.asamk.signal.manager.storage.stickers;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Collection;
+import java.util.stream.Collectors;
+
 import org.asamk.signal.manager.api.StickerPackId;
 import org.asamk.signal.manager.storage.Database;
 import org.asamk.signal.manager.storage.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Collection;
 
 public class StickerStore {
 
@@ -21,14 +22,12 @@ public class StickerStore {
     public static void createSql(Connection connection) throws SQLException {
         // When modifying the CREATE statement here, also add a migration in AccountDatabase.java
         try (final var statement = connection.createStatement()) {
-            statement.executeUpdate("""
-                                    CREATE TABLE sticker (
-                                      _id INTEGER PRIMARY KEY,
-                                      pack_id BLOB UNIQUE NOT NULL,
-                                      pack_key BLOB NOT NULL,
-                                      installed INTEGER NOT NULL DEFAULT FALSE
-                                    ) STRICT;
-                                    """);
+            statement.executeUpdate("                                    CREATE TABLE sticker (\n"
+                    + "                                      _id INTEGER PRIMARY KEY,\n"
+                    + "                                      pack_id BLOB UNIQUE NOT NULL,\n"
+                    + "                                      pack_key BLOB NOT NULL,\n"
+                    + "                                      installed INTEGER NOT NULL DEFAULT FALSE\n"
+                    + "                                    ) STRICT;\n" + "");
         }
     }
 
@@ -37,16 +36,13 @@ public class StickerStore {
     }
 
     public Collection<StickerPack> getStickerPacks() {
-        final var sql = (
-                """
-                SELECT s._id, s.pack_id, s.pack_key, s.installed
-                FROM %s s
-                """
-        ).formatted(TABLE_STICKER);
+        final var sql = String.format(
+                "                SELECT s._id, s.pack_id, s.pack_key, s.installed\n" + "                FROM %s s",
+                TABLE_STICKER);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 try (var result = Utils.executeQueryForStream(statement, this::getStickerPackFromResultSet)) {
-                    return result.toList();
+                    return result.collect(Collectors.toList());
                 }
             }
         } catch (SQLException e) {
@@ -55,13 +51,8 @@ public class StickerStore {
     }
 
     public StickerPack getStickerPack(StickerPackId packId) {
-        final var sql = (
-                """
-                SELECT s._id, s.pack_id, s.pack_key, s.installed
-                FROM %s s
-                WHERE s.pack_id = ?
-                """
-        ).formatted(TABLE_STICKER);
+        final var sql = String.format("                SELECT s._id, s.pack_id, s.pack_key, s.installed\n"
+                + "                FROM %s s\n" + "                WHERE s.pack_id = ?", TABLE_STICKER);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 statement.setBytes(1, packId.serialize());
@@ -73,17 +64,13 @@ public class StickerStore {
     }
 
     public void addStickerPack(StickerPack stickerPack) {
-        final var sql = (
-                """
-                INSERT INTO %s (pack_id, pack_key, installed)
-                VALUES (?, ?, ?)
-                """
-        ).formatted(TABLE_STICKER);
+        final var sql = String.format("                INSERT INTO %s (pack_id, pack_key, installed)\n"
+                + "                VALUES (?, ?, ?)\n" + "", TABLE_STICKER);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
-                statement.setBytes(1, stickerPack.packId().serialize());
-                statement.setBytes(2, stickerPack.packKey());
-                statement.setBoolean(3, stickerPack.isInstalled());
+                statement.setBytes(1, stickerPack.packId.serialize());
+                statement.setBytes(2, stickerPack.packKey);
+                statement.setBoolean(3, stickerPack.isInstalled);
                 statement.executeUpdate();
             }
         } catch (SQLException e) {
@@ -92,13 +79,8 @@ public class StickerStore {
     }
 
     public void updateStickerPackInstalled(StickerPackId stickerPackId, boolean installed) {
-        final var sql = (
-                """
-                UPDATE %s
-                SET installed = ?
-                WHERE pack_id = ?
-                """
-        ).formatted(TABLE_STICKER);
+        final var sql = String.format("                UPDATE %s\n" + "                SET installed = ?\n"
+                + "                WHERE pack_id = ?", TABLE_STICKER);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 statement.setBytes(1, stickerPackId.serialize());
@@ -113,22 +95,18 @@ public class StickerStore {
     void addLegacyStickers(Collection<StickerPack> stickerPacks) {
         logger.debug("Migrating legacy stickers to database");
         long start = System.nanoTime();
-        final var sql = (
-                """
-                INSERT INTO %s (pack_id, pack_key, installed)
-                VALUES (?, ?, ?)
-                """
-        ).formatted(TABLE_STICKER);
+        final var sql = String.format("                INSERT INTO %s (pack_id, pack_key, installed)\n"
+                + "                VALUES (?, ?, ?)\n" + "", TABLE_STICKER);
         try (final var connection = database.getConnection()) {
             connection.setAutoCommit(false);
-            try (final var statement = connection.prepareStatement("DELETE FROM %s".formatted(TABLE_STICKER))) {
+            try (final var statement = connection.prepareStatement(String.format("DELETE FROM %s", TABLE_STICKER))) {
                 statement.executeUpdate();
             }
             try (final var statement = connection.prepareStatement(sql)) {
                 for (final var sticker : stickerPacks) {
-                    statement.setBytes(1, sticker.packId().serialize());
-                    statement.setBytes(2, sticker.packKey());
-                    statement.setBoolean(3, sticker.isInstalled());
+                    statement.setBytes(1, sticker.packId.serialize());
+                    statement.setBytes(2, sticker.packKey);
+                    statement.setBoolean(3, sticker.isInstalled);
                     statement.executeUpdate();
                 }
             }

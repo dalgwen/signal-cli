@@ -16,6 +16,12 @@
  */
 package org.asamk.signal.manager;
 
+import java.io.IOException;
+import java.net.URI;
+import java.nio.channels.OverlappingFileLockException;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
+
 import org.asamk.signal.manager.api.UserAlreadyExistsException;
 import org.asamk.signal.manager.config.ServiceConfig;
 import org.asamk.signal.manager.config.ServiceEnvironmentConfig;
@@ -36,12 +42,6 @@ import org.whispersystems.signalservice.api.util.DeviceNameUtil;
 import org.whispersystems.signalservice.internal.push.ConfirmCodeMessage;
 import org.whispersystems.signalservice.internal.util.DynamicCredentialsProvider;
 
-import java.io.IOException;
-import java.net.URI;
-import java.nio.channels.OverlappingFileLockException;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
-
 class ProvisioningManagerImpl implements ProvisioningManager {
 
     private final static Logger logger = LoggerFactory.getLogger(ProvisioningManagerImpl.class);
@@ -58,13 +58,8 @@ class ProvisioningManagerImpl implements ProvisioningManager {
     private final int pniRegistrationId;
     private final String password;
 
-    ProvisioningManagerImpl(
-            PathConfig pathConfig,
-            ServiceEnvironmentConfig serviceEnvironmentConfig,
-            String userAgent,
-            final Consumer<Manager> newManagerListener,
-            final AccountsStore accountsStore
-    ) {
+    ProvisioningManagerImpl(PathConfig pathConfig, ServiceEnvironmentConfig serviceEnvironmentConfig, String userAgent,
+            final Consumer<Manager> newManagerListener, final AccountsStore accountsStore) {
         this.pathConfig = pathConfig;
         this.serviceEnvironmentConfig = serviceEnvironmentConfig;
         this.userAgent = userAgent;
@@ -77,16 +72,15 @@ class ProvisioningManagerImpl implements ProvisioningManager {
         password = KeyUtils.createPassword();
         GroupsV2Operations groupsV2Operations;
         try {
-            groupsV2Operations = new GroupsV2Operations(ClientZkOperations.create(serviceEnvironmentConfig.getSignalServiceConfiguration()),
+            groupsV2Operations = new GroupsV2Operations(
+                    ClientZkOperations.create(serviceEnvironmentConfig.getSignalServiceConfiguration()),
                     ServiceConfig.GROUP_MAX_SIZE);
         } catch (Throwable ignored) {
             groupsV2Operations = null;
         }
         accountManager = new SignalServiceAccountManager(serviceEnvironmentConfig.getSignalServiceConfiguration(),
                 new DynamicCredentialsProvider(null, null, null, password, SignalServiceAddress.DEFAULT_DEVICE_ID),
-                userAgent,
-                groupsV2Operations,
-                ServiceConfig.AUTOMATIC_NETWORK_RETRY);
+                userAgent, groupsV2Operations, ServiceConfig.AUTOMATIC_NETWORK_RETRY);
     }
 
     @Override
@@ -109,10 +103,9 @@ class ProvisioningManagerImpl implements ProvisioningManager {
         if (accountPath == null) {
             accountPath = accountsStore.getPathByNumber(number);
         }
-        if (accountPath != null
-                && SignalAccount.accountFileExists(pathConfig.dataPath(), accountPath)
+        if (accountPath != null && SignalAccount.accountFileExists(pathConfig.dataPath, accountPath)
                 && !canRelinkExistingAccount(accountPath)) {
-            throw new UserAlreadyExistsException(number, SignalAccount.getFileName(pathConfig.dataPath(), accountPath));
+            throw new UserAlreadyExistsException(number, SignalAccount.getFileName(pathConfig.dataPath, accountPath));
         }
         if (accountPath == null) {
             accountPath = accountsStore.addAccount(number, aci);
@@ -120,8 +113,7 @@ class ProvisioningManagerImpl implements ProvisioningManager {
             accountsStore.updateAccount(accountPath, number, aci);
         }
 
-        var encryptedDeviceName = deviceName == null
-                ? null
+        var encryptedDeviceName = deviceName == null ? null
                 : DeviceNameUtil.encryptDeviceName(deviceName, ret.getAciIdentity().getPrivateKey());
 
         logger.debug("Finishing new device registration");
@@ -133,29 +125,15 @@ class ProvisioningManagerImpl implements ProvisioningManager {
 
         SignalAccount account = null;
         try {
-            account = SignalAccount.createOrUpdateLinkedAccount(pathConfig.dataPath(),
-                    accountPath,
-                    number,
-                    serviceEnvironmentConfig.getType(),
-                    aci,
-                    pni,
-                    password,
-                    encryptedDeviceName,
-                    deviceId,
-                    ret.getAciIdentity(),
-                    ret.getPniIdentity(),
-                    registrationId,
-                    pniRegistrationId,
-                    profileKey,
+            account = SignalAccount.createOrUpdateLinkedAccount(pathConfig.dataPath, accountPath, number,
+                    serviceEnvironmentConfig.getType(), aci, pni, password, encryptedDeviceName, deviceId,
+                    ret.getAciIdentity(), ret.getPniIdentity(), registrationId, pniRegistrationId, profileKey,
                     TrustNewIdentity.ON_FIRST_USE);
 
             ManagerImpl m = null;
             try {
-                m = new ManagerImpl(account,
-                        pathConfig,
-                        new AccountFileUpdaterImpl(accountsStore, accountPath),
-                        serviceEnvironmentConfig,
-                        userAgent);
+                m = new ManagerImpl(account, pathConfig, new AccountFileUpdaterImpl(accountsStore, accountPath),
+                        serviceEnvironmentConfig, userAgent);
                 account = null;
 
                 logger.debug("Refreshing pre keys");
@@ -194,10 +172,7 @@ class ProvisioningManagerImpl implements ProvisioningManager {
     private boolean canRelinkExistingAccount(final String accountPath) throws IOException {
         final SignalAccount signalAccount;
         try {
-            signalAccount = SignalAccount.load(pathConfig.dataPath(),
-                    accountPath,
-                    false,
-                    TrustNewIdentity.ON_FIRST_USE);
+            signalAccount = SignalAccount.load(pathConfig.dataPath, accountPath, false, TrustNewIdentity.ON_FIRST_USE);
         } catch (IOException e) {
             logger.debug("Account in use or failed to load.", e);
             return false;
@@ -211,19 +186,15 @@ class ProvisioningManagerImpl implements ProvisioningManager {
                 logger.debug("Account is a primary device.");
                 return false;
             }
-            if (signalAccount.isRegistered()
-                    && signalAccount.getServiceEnvironment() != null
+            if (signalAccount.isRegistered() && signalAccount.getServiceEnvironment() != null
                     && signalAccount.getServiceEnvironment() != serviceEnvironmentConfig.getType()) {
                 logger.debug("Account is registered in another environment: {}.",
                         signalAccount.getServiceEnvironment());
                 return false;
             }
 
-            final var m = new ManagerImpl(signalAccount,
-                    pathConfig,
-                    new AccountFileUpdaterImpl(accountsStore, accountPath),
-                    serviceEnvironmentConfig,
-                    userAgent);
+            final var m = new ManagerImpl(signalAccount, pathConfig,
+                    new AccountFileUpdaterImpl(accountsStore, accountPath), serviceEnvironmentConfig, userAgent);
             try (m) {
                 m.checkAccountState();
             } catch (AuthorizationFailedException ignored) {

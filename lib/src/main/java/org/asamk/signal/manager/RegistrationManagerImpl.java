@@ -16,6 +16,12 @@
  */
 package org.asamk.signal.manager;
 
+import static org.asamk.signal.manager.config.ServiceConfig.capabilities;
+
+import java.io.IOException;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
 import org.asamk.signal.manager.api.CaptchaRequiredException;
 import org.asamk.signal.manager.api.IncorrectPinException;
 import org.asamk.signal.manager.api.NonNormalizedPhoneNumberException;
@@ -39,11 +45,6 @@ import org.whispersystems.signalservice.internal.ServiceResponse;
 import org.whispersystems.signalservice.internal.push.VerifyAccountResponse;
 import org.whispersystems.signalservice.internal.util.DynamicCredentialsProvider;
 
-import java.io.IOException;
-import java.util.function.Consumer;
-
-import static org.asamk.signal.manager.config.ServiceConfig.capabilities;
-
 class RegistrationManagerImpl implements RegistrationManager {
 
     private final static Logger logger = LoggerFactory.getLogger(RegistrationManagerImpl.class);
@@ -58,14 +59,9 @@ class RegistrationManagerImpl implements RegistrationManager {
     private final PinHelper pinHelper;
     private final AccountFileUpdater accountFileUpdater;
 
-    RegistrationManagerImpl(
-            SignalAccount account,
-            PathConfig pathConfig,
-            ServiceEnvironmentConfig serviceEnvironmentConfig,
-            String userAgent,
-            Consumer<Manager> newManagerListener,
-            AccountFileUpdater accountFileUpdater
-    ) {
+    RegistrationManagerImpl(SignalAccount account, PathConfig pathConfig,
+            ServiceEnvironmentConfig serviceEnvironmentConfig, String userAgent, Consumer<Manager> newManagerListener,
+            AccountFileUpdater accountFileUpdater) {
         this.account = account;
         this.pathConfig = pathConfig;
         this.accountFileUpdater = accountFileUpdater;
@@ -75,7 +71,8 @@ class RegistrationManagerImpl implements RegistrationManager {
 
         GroupsV2Operations groupsV2Operations;
         try {
-            groupsV2Operations = new GroupsV2Operations(ClientZkOperations.create(serviceEnvironmentConfig.getSignalServiceConfiguration()),
+            groupsV2Operations = new GroupsV2Operations(
+                    ClientZkOperations.create(serviceEnvironmentConfig.getSignalServiceConfiguration()),
                     ServiceConfig.GROUP_MAX_SIZE);
         } catch (Throwable ignored) {
             groupsV2Operations = null;
@@ -84,31 +81,22 @@ class RegistrationManagerImpl implements RegistrationManager {
                 new DynamicCredentialsProvider(
                         // Using empty UUID, because registering doesn't work otherwise
                         null, null, account.getNumber(), account.getPassword(), SignalServiceAddress.DEFAULT_DEVICE_ID),
-                userAgent,
-                groupsV2Operations,
-                ServiceConfig.AUTOMATIC_NETWORK_RETRY);
+                userAgent, groupsV2Operations, ServiceConfig.AUTOMATIC_NETWORK_RETRY);
         final var keyBackupService = accountManager.getKeyBackupService(ServiceConfig.getIasKeyStore(),
                 serviceEnvironmentConfig.getKeyBackupConfig().getEnclaveName(),
                 serviceEnvironmentConfig.getKeyBackupConfig().getServiceId(),
-                serviceEnvironmentConfig.getKeyBackupConfig().getMrenclave(),
-                10);
-        final var fallbackKeyBackupServices = serviceEnvironmentConfig.getFallbackKeyBackupConfigs()
-                .stream()
+                serviceEnvironmentConfig.getKeyBackupConfig().getMrenclave(), 10);
+        final var fallbackKeyBackupServices = serviceEnvironmentConfig.getFallbackKeyBackupConfigs().stream()
                 .map(config -> accountManager.getKeyBackupService(ServiceConfig.getIasKeyStore(),
-                        config.getEnclaveName(),
-                        config.getServiceId(),
-                        config.getMrenclave(),
-                        10))
-                .toList();
+                        config.getEnclaveName(), config.getServiceId(), config.getMrenclave(), 10))
+                .collect(Collectors.toList());
         this.pinHelper = new PinHelper(keyBackupService, fallbackKeyBackupServices);
     }
 
     @Override
-    public void register(
-            boolean voiceVerification, String captcha
-    ) throws IOException, CaptchaRequiredException, NonNormalizedPhoneNumberException {
-        if (account.isRegistered()
-                && account.getServiceEnvironment() != null
+    public void register(boolean voiceVerification, String captcha)
+            throws IOException, CaptchaRequiredException, NonNormalizedPhoneNumberException {
+        if (account.isRegistered() && account.getServiceEnvironment() != null
                 && account.getServiceEnvironment() != serviceEnvironmentConfig.getType()) {
             throw new IOException("Account is registered in another environment: " + account.getServiceEnvironment());
         }
@@ -121,20 +109,17 @@ class RegistrationManagerImpl implements RegistrationManager {
     }
 
     @Override
-    public void verifyAccount(
-            String verificationCode, String pin
-    ) throws IOException, PinLockedException, IncorrectPinException {
-        final var result = NumberVerificationUtils.verifyNumber(verificationCode,
-                pin,
-                pinHelper,
+    public void verifyAccount(String verificationCode, String pin)
+            throws IOException, PinLockedException, IncorrectPinException {
+        final var result = NumberVerificationUtils.verifyNumber(verificationCode, pin, pinHelper,
                 this::verifyAccountWithCode);
-        final var response = result.first();
-        final var masterKey = result.second();
+        final var response = result.first;
+        final var masterKey = result.second;
         if (masterKey == null) {
             pin = null;
         }
 
-        //accountManager.setGcmId(Optional.of(GoogleCloudMessaging.getInstance(this).register(REGISTRATION_ID)));
+        // accountManager.setGcmId(Optional.of(GoogleCloudMessaging.getInstance(this).register(REGISTRATION_ID)));
         final var aci = ACI.parseOrNull(response.getUuid());
         final var pni = PNI.parseOrNull(response.getPni());
         account.finishRegistration(aci, pni, masterKey, pin);
@@ -181,29 +166,17 @@ class RegistrationManagerImpl implements RegistrationManager {
 
     private boolean attemptReactivateAccount() {
         try {
-            final var accountManager = new SignalServiceAccountManager(serviceEnvironmentConfig.getSignalServiceConfiguration(),
-                    account.getCredentialsProvider(),
-                    userAgent,
-                    null,
-                    ServiceConfig.AUTOMATIC_NETWORK_RETRY);
-            accountManager.setAccountAttributes(null,
-                    account.getLocalRegistrationId(),
-                    true,
-                    null,
-                    account.getRegistrationLock(),
-                    account.getSelfUnidentifiedAccessKey(),
-                    account.isUnrestrictedUnidentifiedAccess(),
-                    capabilities,
-                    account.isDiscoverableByPhoneNumber(),
-                    account.getEncryptedDeviceName(),
-                    account.getLocalPniRegistrationId());
+            final var accountManager = new SignalServiceAccountManager(
+                    serviceEnvironmentConfig.getSignalServiceConfiguration(), account.getCredentialsProvider(),
+                    userAgent, null, ServiceConfig.AUTOMATIC_NETWORK_RETRY);
+            accountManager.setAccountAttributes(null, account.getLocalRegistrationId(), true, null,
+                    account.getRegistrationLock(), account.getSelfUnidentifiedAccessKey(),
+                    account.isUnrestrictedUnidentifiedAccess(), capabilities, account.isDiscoverableByPhoneNumber(),
+                    account.getEncryptedDeviceName(), account.getLocalPniRegistrationId());
             account.setRegistered(true);
             logger.info("Reactivated existing account, verify is not necessary.");
             if (newManagerListener != null) {
-                final var m = new ManagerImpl(account,
-                        pathConfig,
-                        accountFileUpdater,
-                        serviceEnvironmentConfig,
+                final var m = new ManagerImpl(account, pathConfig, accountFileUpdater, serviceEnvironmentConfig,
                         userAgent);
                 account = null;
                 newManagerListener.accept(m);
@@ -215,28 +188,18 @@ class RegistrationManagerImpl implements RegistrationManager {
         return false;
     }
 
-    private ServiceResponse<VerifyAccountResponse> verifyAccountWithCode(
-            final String verificationCode, final String registrationLock
-    ) {
+    private ServiceResponse<VerifyAccountResponse> verifyAccountWithCode(final String verificationCode,
+            final String registrationLock) {
         if (registrationLock == null) {
-            return accountManager.verifyAccount(verificationCode,
-                    account.getLocalRegistrationId(),
-                    true,
-                    account.getSelfUnidentifiedAccessKey(),
-                    account.isUnrestrictedUnidentifiedAccess(),
-                    ServiceConfig.capabilities,
-                    account.isDiscoverableByPhoneNumber(),
+            return accountManager.verifyAccount(verificationCode, account.getLocalRegistrationId(), true,
+                    account.getSelfUnidentifiedAccessKey(), account.isUnrestrictedUnidentifiedAccess(),
+                    ServiceConfig.capabilities, account.isDiscoverableByPhoneNumber(),
                     account.getLocalPniRegistrationId());
         } else {
             return accountManager.verifyAccountWithRegistrationLockPin(verificationCode,
-                    account.getLocalRegistrationId(),
-                    true,
-                    registrationLock,
-                    account.getSelfUnidentifiedAccessKey(),
-                    account.isUnrestrictedUnidentifiedAccess(),
-                    ServiceConfig.capabilities,
-                    account.isDiscoverableByPhoneNumber(),
-                    account.getLocalPniRegistrationId());
+                    account.getLocalRegistrationId(), true, registrationLock, account.getSelfUnidentifiedAccessKey(),
+                    account.isUnrestrictedUnidentifiedAccess(), ServiceConfig.capabilities,
+                    account.isDiscoverableByPhoneNumber(), account.getLocalPniRegistrationId());
         }
     }
 

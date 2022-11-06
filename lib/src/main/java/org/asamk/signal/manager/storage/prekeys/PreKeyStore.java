@@ -1,5 +1,10 @@
 package org.asamk.signal.manager.storage.prekeys;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Collection;
+
 import org.asamk.signal.manager.storage.Database;
 import org.asamk.signal.manager.storage.Utils;
 import org.signal.libsignal.protocol.InvalidKeyException;
@@ -10,11 +15,6 @@ import org.signal.libsignal.protocol.state.PreKeyRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.push.ServiceIdType;
-
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Collection;
 
 public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeyStore {
 
@@ -27,16 +27,14 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
     public static void createSql(Connection connection) throws SQLException {
         // When modifying the CREATE statement here, also add a migration in AccountDatabase.java
         try (final var statement = connection.createStatement()) {
-            statement.executeUpdate("""
-                                    CREATE TABLE pre_key (
-                                      _id INTEGER PRIMARY KEY,
-                                      account_id_type INTEGER NOT NULL,
-                                      key_id INTEGER NOT NULL,
-                                      public_key BLOB NOT NULL,
-                                      private_key BLOB NOT NULL,
-                                      UNIQUE(account_id_type, key_id)
-                                    ) STRICT;
-                                    """);
+            statement.executeUpdate(
+                    "                    CREATE TABLE pre_key (\n" + "                      _id INTEGER PRIMARY KEY,\n"
+                            + "                      account_id_type INTEGER NOT NULL,\n"
+                            + "                      key_id INTEGER NOT NULL,\n"
+                            + "                      public_key BLOB NOT NULL,\n"
+                            + "                      private_key BLOB NOT NULL,\n"
+                            + "                      UNIQUE(account_id_type, key_id)\n"
+                            + "                    ) STRICT;\n" + "");
         }
     }
 
@@ -56,12 +54,9 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
 
     @Override
     public void storePreKey(int preKeyId, PreKeyRecord record) {
-        final var sql = (
-                """
-                INSERT INTO %s (account_id_type, key_id, public_key, private_key)
-                VALUES (?, ?, ?, ?)
-                """
-        ).formatted(TABLE_PRE_KEY);
+        final var sql = String
+                .format("                INSERT INTO %s (account_id_type, key_id, public_key, private_key)\n"
+                        + "                VALUES (?, ?, ?, ?)\n", TABLE_PRE_KEY);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, accountIdType);
@@ -84,12 +79,8 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
 
     @Override
     public void removePreKey(int preKeyId) {
-        final var sql = (
-                """
-                DELETE FROM %s AS p
-                WHERE p.account_id_type = ? AND p.key_id = ?
-                """
-        ).formatted(TABLE_PRE_KEY);
+        final var sql = String.format("                DELETE FROM %s AS p\n"
+                + "                WHERE p.account_id_type = ? AND p.key_id = ?\n", TABLE_PRE_KEY);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, accountIdType);
@@ -102,12 +93,9 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
     }
 
     public void removeAllPreKeys() {
-        final var sql = (
-                """
-                DELETE FROM %s AS p
-                WHERE p.account_id_type = ?
-                """
-        ).formatted(TABLE_PRE_KEY);
+        final var sql = String.format(
+                "                DELETE FROM %s AS p\n" + "                WHERE p.account_id_type = ?\n",
+                TABLE_PRE_KEY);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, accountIdType);
@@ -121,15 +109,12 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
     void addLegacyPreKeys(final Collection<PreKeyRecord> preKeys) {
         logger.debug("Migrating legacy preKeys to database");
         long start = System.nanoTime();
-        final var sql = (
-                """
-                INSERT INTO %s (account_id_type, key_id, public_key, private_key)
-                VALUES (?, ?, ?, ?)
-                """
-        ).formatted(TABLE_PRE_KEY);
+        final var sql = String
+                .format("                INSERT INTO %s (account_id_type, key_id, public_key, private_key)\n"
+                        + "                VALUES (?, ?, ?, ?)\n", TABLE_PRE_KEY);
         try (final var connection = database.getConnection()) {
             connection.setAutoCommit(false);
-            final var deleteSql = "DELETE FROM %s AS p WHERE p.account_id_type = ?".formatted(TABLE_PRE_KEY);
+            final var deleteSql = String.format("DELETE FROM %s AS p WHERE p.account_id_type = ?", TABLE_PRE_KEY);
             try (final var statement = connection.prepareStatement(deleteSql)) {
                 statement.setInt(1, accountIdType);
                 statement.executeUpdate();
@@ -153,13 +138,9 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
     }
 
     private PreKeyRecord getPreKey(int preKeyId) {
-        final var sql = (
-                """
-                SELECT p.key_id, p.public_key, p.private_key
-                FROM %s p
-                WHERE p.account_id_type = ? AND p.key_id = ?
-                """
-        ).formatted(TABLE_PRE_KEY);
+        final var sql = String.format("                SELECT p.key_id, p.public_key, p.private_key\n"
+                + "                FROM %s p\n" + "                WHERE p.account_id_type = ? AND p.key_id = ?\n",
+                TABLE_PRE_KEY);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, accountIdType);

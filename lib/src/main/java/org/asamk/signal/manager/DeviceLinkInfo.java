@@ -1,10 +1,6 @@
 package org.asamk.signal.manager;
 
-import org.asamk.signal.manager.api.InvalidDeviceLinkException;
-import org.asamk.signal.manager.util.Utils;
-import org.signal.libsignal.protocol.InvalidKeyException;
-import org.signal.libsignal.protocol.ecc.Curve;
-import org.signal.libsignal.protocol.ecc.ECPublicKey;
+import static org.whispersystems.signalservice.internal.util.Util.isEmpty;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -12,9 +8,22 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
-import static org.whispersystems.signalservice.internal.util.Util.isEmpty;
+import org.asamk.signal.manager.api.InvalidDeviceLinkException;
+import org.asamk.signal.manager.util.Utils;
+import org.signal.libsignal.protocol.InvalidKeyException;
+import org.signal.libsignal.protocol.ecc.Curve;
+import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
-public record DeviceLinkInfo(String deviceIdentifier, ECPublicKey deviceKey) {
+public class DeviceLinkInfo {
+
+    public String deviceIdentifier;
+    public ECPublicKey deviceKey;
+
+    public DeviceLinkInfo(String deviceIdentifier, ECPublicKey deviceKey) {
+        super();
+        this.deviceIdentifier = deviceIdentifier;
+        this.deviceKey = deviceKey;
+    }
 
     public static DeviceLinkInfo parseDeviceLinkUri(URI linkUri) throws InvalidDeviceLinkException {
         final var rawQuery = linkUri.getRawQuery();
@@ -49,10 +58,8 @@ public record DeviceLinkInfo(String deviceIdentifier, ECPublicKey deviceKey) {
     public URI createDeviceLinkUri() {
         final var deviceKeyString = Base64.getEncoder().encodeToString(deviceKey.serialize()).replace("=", "");
         try {
-            return new URI("sgnl://linkdevice?uuid="
-                    + URLEncoder.encode(deviceIdentifier, StandardCharsets.UTF_8)
-                    + "&pub_key="
-                    + URLEncoder.encode(deviceKeyString, StandardCharsets.UTF_8));
+            return new URI("sgnl://linkdevice?uuid=" + URLEncoder.encode(deviceIdentifier, StandardCharsets.UTF_8)
+                    + "&pub_key=" + URLEncoder.encode(deviceKeyString, StandardCharsets.UTF_8));
         } catch (URISyntaxException e) {
             throw new AssertionError(e);
         }

@@ -82,22 +82,30 @@ public class ConfigurationStore {
     }
 
     private Storage toStorage() {
-        return new Storage(readReceipts,
-                unidentifiedDeliveryIndicators,
-                typingIndicators,
-                linkPreviews,
-                phoneNumberUnlisted,
-                phoneNumberSharingMode);
+        return new Storage(readReceipts, unidentifiedDeliveryIndicators, typingIndicators, linkPreviews,
+                phoneNumberUnlisted, phoneNumberSharingMode);
     }
 
-    public record Storage(
-            Boolean readReceipts,
-            Boolean unidentifiedDeliveryIndicators,
-            Boolean typingIndicators,
-            Boolean linkPreviews,
-            Boolean phoneNumberUnlisted,
-            PhoneNumberSharingMode phoneNumberSharingMode
-    ) {}
+    public static class Storage {
+        Boolean readReceipts;
+        Boolean unidentifiedDeliveryIndicators;
+        Boolean typingIndicators;
+        Boolean linkPreviews;
+        Boolean phoneNumberUnlisted;
+        PhoneNumberSharingMode phoneNumberSharingMode;
+
+        public Storage(Boolean readReceipts, Boolean unidentifiedDeliveryIndicators, Boolean typingIndicators,
+                Boolean linkPreviews, Boolean phoneNumberUnlisted, PhoneNumberSharingMode phoneNumberSharingMode) {
+            super();
+            this.readReceipts = readReceipts;
+            this.unidentifiedDeliveryIndicators = unidentifiedDeliveryIndicators;
+            this.typingIndicators = typingIndicators;
+            this.linkPreviews = linkPreviews;
+            this.phoneNumberUnlisted = phoneNumberUnlisted;
+            this.phoneNumberSharingMode = phoneNumberSharingMode;
+        }
+
+    }
 
     public interface Saver {
 

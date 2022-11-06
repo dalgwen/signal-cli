@@ -1,14 +1,5 @@
 package org.asamk.signal.manager.storage.sessions;
 
-import org.asamk.signal.manager.api.Pair;
-import org.asamk.signal.manager.helper.RecipientAddressResolver;
-import org.asamk.signal.manager.storage.recipients.RecipientId;
-import org.asamk.signal.manager.storage.recipients.RecipientResolver;
-import org.asamk.signal.manager.util.IOUtils;
-import org.signal.libsignal.protocol.state.SessionRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -19,26 +10,32 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.asamk.signal.manager.api.Pair;
+import org.asamk.signal.manager.helper.RecipientAddressResolver;
+import org.asamk.signal.manager.storage.recipients.RecipientId;
+import org.asamk.signal.manager.storage.recipients.RecipientResolver;
+import org.asamk.signal.manager.util.IOUtils;
+import org.signal.libsignal.protocol.state.SessionRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LegacySessionStore {
 
     private final static Logger logger = LoggerFactory.getLogger(LegacySessionStore.class);
 
-    public static void migrate(
-            final File sessionsPath,
-            final RecipientResolver resolver,
-            final RecipientAddressResolver addressResolver,
-            final SessionStore sessionStore
-    ) {
+    public static void migrate(final File sessionsPath, final RecipientResolver resolver,
+            final RecipientAddressResolver addressResolver, final SessionStore sessionStore) {
         final var keys = getKeysLocked(sessionsPath, resolver);
         final var sessions = keys.stream().map(key -> {
             final var record = loadSessionLocked(key, sessionsPath);
-            final var serviceId = addressResolver.resolveRecipientAddress(key.recipientId).serviceId();
+            final var serviceId = addressResolver.resolveRecipientAddress(key.recipientId).serviceId;
             if (record == null || serviceId.isEmpty()) {
                 return null;
             }
-            return new Pair<>(new SessionStore.Key(serviceId.get(), key.deviceId()), record);
-        }).filter(Objects::nonNull).toList();
+            return new Pair<>(new SessionStore.Key(serviceId.get(), key.deviceId), record);
+        }).filter(Objects::nonNull).collect(Collectors.toList());
         sessionStore.addLegacySessions(sessions);
         deleteAllSessions(sessionsPath);
     }
@@ -74,18 +71,14 @@ public class LegacySessionStore {
     static final Pattern sessionFileNamePattern = Pattern.compile("(\\d+)_(\\d+)");
 
     private static List<Key> parseFileNames(final File[] files, final RecipientResolver resolver) {
-        return Arrays.stream(files)
-                .map(f -> sessionFileNamePattern.matcher(f.getName()))
-                .filter(Matcher::matches)
+        return Arrays.stream(files).map(f -> sessionFileNamePattern.matcher(f.getName())).filter(Matcher::matches)
                 .map(matcher -> {
                     final var recipientId = resolver.resolveRecipient(Long.parseLong(matcher.group(1)));
                     if (recipientId == null) {
                         return null;
                     }
                     return new Key(recipientId, Integer.parseInt(matcher.group(2)));
-                })
-                .filter(Objects::nonNull)
-                .toList();
+                }).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
     private static File getSessionFile(Key key, final File sessionsPath) {
@@ -94,7 +87,7 @@ public class LegacySessionStore {
         } catch (IOException e) {
             throw new AssertionError("Failed to create sessions path", e);
         }
-        return new File(sessionsPath, key.recipientId().id() + "_" + key.deviceId());
+        return new File(sessionsPath, key.recipientId.id() + "_" + key.deviceId);
     }
 
     private static SessionRecord loadSessionLocked(final Key key, final File sessionsPath) {
@@ -110,5 +103,15 @@ public class LegacySessionStore {
         }
     }
 
-    record Key(RecipientId recipientId, int deviceId) {}
+    static class Key {
+        RecipientId recipientId;
+        int deviceId;
+
+        public Key(RecipientId recipientId, int deviceId) {
+            super();
+            this.recipientId = recipientId;
+            this.deviceId = deviceId;
+        }
+
+    }
 }
