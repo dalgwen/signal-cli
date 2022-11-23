@@ -133,9 +133,9 @@ class ManagerImpl implements Manager {
         };
         this.dependencies = new SignalDependencies(serviceEnvironmentConfig, userAgent,
                 account.getCredentialsProvider(), account.getSignalServiceDataStore(), executor, sessionLock);
-        final var avatarStore = new AvatarStore(pathConfig.avatarsPath);
-        final var attachmentStore = new AttachmentStore(pathConfig.attachmentsPath);
-        final var stickerPackStore = new StickerPackStore(pathConfig.stickerPacksPath);
+        final var avatarStore = new AvatarStore(pathConfig.avatarsPath());
+        final var attachmentStore = new AttachmentStore(pathConfig.attachmentsPath());
+        final var stickerPackStore = new StickerPackStore(pathConfig.stickerPacksPath());
 
         this.context = new Context(account, new AccountFileUpdater() {
             @Override
@@ -236,17 +236,17 @@ class ManagerImpl implements Manager {
         }
 
         final var configurationStore = account.getConfigurationStore();
-        if (configuration.readReceipts.isPresent()) {
-            configurationStore.setReadReceipts(configuration.readReceipts.get());
+        if (configuration.readReceipts().isPresent()) {
+            configurationStore.setReadReceipts(configuration.readReceipts().get());
         }
-        if (configuration.unidentifiedDeliveryIndicators.isPresent()) {
-            configurationStore.setUnidentifiedDeliveryIndicators(configuration.unidentifiedDeliveryIndicators.get());
+        if (configuration.unidentifiedDeliveryIndicators().isPresent()) {
+            configurationStore.setUnidentifiedDeliveryIndicators(configuration.unidentifiedDeliveryIndicators().get());
         }
-        if (configuration.typingIndicators.isPresent()) {
-            configurationStore.setTypingIndicators(configuration.typingIndicators.get());
+        if (configuration.typingIndicators().isPresent()) {
+            configurationStore.setTypingIndicators(configuration.typingIndicators().get());
         }
-        if (configuration.linkPreviews.isPresent()) {
-            configurationStore.setLinkPreviews(configuration.linkPreviews.get());
+        if (configuration.linkPreviews().isPresent()) {
+            configurationStore.setLinkPreviews(configuration.linkPreviews().get());
         }
         context.getSyncHelper().sendConfigurationMessage();
     }
@@ -417,7 +417,7 @@ class ManagerImpl implements Manager {
                 results.put(recipient, List.of(toSendMessageResult(result)));
             } else if (recipient instanceof RecipientIdentifier.Group) {
                 final var result = context.getSendHelper().sendAsGroupMessage(messageBuilder,
-                        ((RecipientIdentifier.Group) recipient).groupId);
+                        ((RecipientIdentifier.Group) recipient).groupId());
                 results.put(recipient, result.stream().map(this::toSendMessageResult).collect(Collectors.toList()));
             }
         }
@@ -447,7 +447,7 @@ class ManagerImpl implements Manager {
                             ((RecipientIdentifier.Single) recipient).toPartialRecipientAddress())));
                 }
             } else if (recipient instanceof RecipientIdentifier.Group) {
-                final var groupId = ((RecipientIdentifier.Group) recipient).groupId;
+                final var groupId = ((RecipientIdentifier.Group) recipient).groupId();
                 final var message = new SignalServiceTypingMessage(action, timestamp, Optional.of(groupId.serialize()));
                 final var result = context.getSendHelper().sendGroupTypingMessage(message, groupId);
                 results.put(recipient, result.stream().map(this::toSendMessageResult).collect(Collectors.toList()));
@@ -508,50 +508,52 @@ class ManagerImpl implements Manager {
 
     private void applyMessage(final SignalServiceDataMessage.Builder messageBuilder, final Message message)
             throws AttachmentInvalidException, IOException, UnregisteredRecipientException, InvalidStickerException {
-        messageBuilder.withBody(message.messageText);
-        if (message.attachments.size() > 0) {
-            messageBuilder.withAttachments(context.getAttachmentHelper().uploadAttachments(message.attachments));
+        messageBuilder.withBody(message.messageText());
+        if (message.attachments().size() > 0) {
+            messageBuilder.withAttachments(context.getAttachmentHelper().uploadAttachments(message.attachments()));
         }
-        if (message.mentions.size() > 0) {
-            messageBuilder.withMentions(resolveMentions(message.mentions));
+        if (message.mentions().size() > 0) {
+            messageBuilder.withMentions(resolveMentions(message.mentions()));
         }
-        if (message.quote.isPresent()) {
-            final var quote = message.quote.get();
-            messageBuilder.withQuote(new SignalServiceDataMessage.Quote(quote.timestamp,
+        if (message.quote().isPresent()) {
+            final var quote = message.quote().get();
+            messageBuilder.withQuote(new SignalServiceDataMessage.Quote(quote.timestamp(),
                     context.getRecipientHelper()
-                            .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(quote.author))
+                            .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(quote.author()))
                             .getServiceId(),
-                    quote.message, List.of(), resolveMentions(quote.mentions),
+                    quote.message(), List.of(), resolveMentions(quote.mentions()),
                     SignalServiceDataMessage.Quote.Type.NORMAL));
         }
-        if (message.sticker.isPresent()) {
-            final var sticker = message.sticker.get();
-            final var packId = StickerPackId.deserialize(sticker.packId);
-            final var stickerId = sticker.stickerId;
+        if (message.sticker().isPresent()) {
+            final var sticker = message.sticker().get();
+            final var packId = StickerPackId.deserialize(sticker.packId());
+            final var stickerId = sticker.stickerId();
 
             final var stickerPack = context.getAccount().getStickerStore().getStickerPack(packId);
             if (stickerPack == null) {
                 throw new InvalidStickerException("Sticker pack not found");
             }
-            final var manifest = context.getStickerHelper().getOrRetrieveStickerPack(packId, stickerPack.packKey);
-            if (manifest.stickers.size() <= stickerId) {
+            final var manifest = context.getStickerHelper().getOrRetrieveStickerPack(packId, stickerPack.packKey());
+            if (manifest.stickers().size() <= stickerId) {
                 throw new InvalidStickerException("Sticker id not part of this pack");
             }
-            final var manifestSticker = manifest.stickers.get(stickerId);
+            final var manifestSticker = manifest.stickers().get(stickerId);
             final var streamDetails = context.getStickerPackStore().retrieveSticker(packId, stickerId);
             if (streamDetails == null) {
                 throw new InvalidStickerException("Missing local sticker file");
             }
-            messageBuilder.withSticker(new SignalServiceDataMessage.Sticker(packId.serialize(), stickerPack.packKey,
-                    stickerId, manifestSticker.emoji,
+            messageBuilder.withSticker(new SignalServiceDataMessage.Sticker(packId.serialize(), stickerPack.packKey(),
+                    stickerId, manifestSticker.emoji(),
                     AttachmentUtils.createAttachmentStream(streamDetails, Optional.empty())));
         }
-        if (message.previews.size() > 0) {
-            final var previews = new ArrayList<SignalServicePreview>(message.previews.size());
-            for (final var p : message.previews) {
-                final var image = p.image.isPresent() ? context.getAttachmentHelper().uploadAttachment(p.image.get())
+        if (message.previews().size() > 0) {
+            final var previews = new ArrayList<SignalServicePreview>(message.previews().size());
+            for (final var p : message.previews()) {
+                final var image = p.image().isPresent()
+                        ? context.getAttachmentHelper().uploadAttachment(p.image().get())
                         : null;
-                previews.add(new SignalServicePreview(p.url, p.title, p.description, 0, Optional.ofNullable(image)));
+                previews.add(
+                        new SignalServicePreview(p.url(), p.title(), p.description(), 0, Optional.ofNullable(image)));
             }
             messageBuilder.withPreviews(previews);
         }
@@ -561,10 +563,10 @@ class ManagerImpl implements Manager {
             throws UnregisteredRecipientException {
         final var mentions = new ArrayList<SignalServiceDataMessage.Mention>();
         for (final var m : mentionList) {
-            final var recipientId = context.getRecipientHelper().resolveRecipient(m.recipient);
+            final var recipientId = context.getRecipientHelper().resolveRecipient(m.recipient());
             mentions.add(new SignalServiceDataMessage.Mention(
-                    context.getRecipientHelper().resolveSignalServiceAddress(recipientId).getServiceId(), m.start,
-                    m.length));
+                    context.getRecipientHelper().resolveSignalServiceAddress(recipientId).getServiceId(), m.start(),
+                    m.length()));
         }
         return mentions;
     }
@@ -585,7 +587,7 @@ class ManagerImpl implements Manager {
                 }
             } else if (recipient instanceof RecipientIdentifier.Group) {
                 account.getMessageSendLogStore().deleteEntryForGroup(targetSentTimestamp,
-                        ((RecipientIdentifier.Group) recipient).groupId);
+                        ((RecipientIdentifier.Group) recipient).groupId());
             }
         }
         return sendMessage(messageBuilder, recipients);
@@ -744,21 +746,21 @@ class ManagerImpl implements Manager {
     public List<org.asamk.signal.manager.api.StickerPack> getStickerPacks() {
         final var stickerPackStore = context.getStickerPackStore();
         return account.getStickerStore().getStickerPacks().stream().map(pack -> {
-            if (stickerPackStore.existsStickerPack(pack.packId)) {
+            if (stickerPackStore.existsStickerPack(pack.packId())) {
                 try {
-                    final var manifest = stickerPackStore.retrieveManifest(pack.packId);
-                    return new org.asamk.signal.manager.api.StickerPack(pack.packId,
-                            new StickerPackUrl(pack.packId, pack.packKey), pack.isInstalled, manifest.title,
-                            manifest.author,
-                            Optional.ofNullable(manifest.cover == null ? null : manifest.cover.toApi()),
-                            manifest.stickers.stream().map(JsonStickerPack.JsonSticker::toApi)
+                    final var manifest = stickerPackStore.retrieveManifest(pack.packId());
+                    return new org.asamk.signal.manager.api.StickerPack(pack.packId(),
+                            new StickerPackUrl(pack.packId(), pack.packKey()), pack.isInstalled(), manifest.title(),
+                            manifest.author(),
+                            Optional.ofNullable(manifest.cover() == null ? null : manifest.cover().toApi()),
+                            manifest.stickers().stream().map(JsonStickerPack.JsonSticker::toApi)
                                     .collect(Collectors.toList()));
                 } catch (Exception e) {
                     logger.warn("Failed to read local sticker pack manifest: {}", e.getMessage(), e);
                 }
             }
 
-            return new org.asamk.signal.manager.api.StickerPack(pack.packId, pack.packKey, pack.isInstalled);
+            return new org.asamk.signal.manager.api.StickerPack(pack.packId(), pack.packKey(), pack.isInstalled());
         }).collect(Collectors.toList());
     }
 

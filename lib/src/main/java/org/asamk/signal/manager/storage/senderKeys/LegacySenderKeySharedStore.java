@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.senderKeys;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -32,7 +35,7 @@ public class LegacySenderKeySharedStore {
                 if (recipientId == null) {
                     continue;
                 }
-                final var serviceId = addressResolver.resolveRecipientAddress(recipientId).serviceId;
+                final var serviceId = addressResolver.resolveRecipientAddress(recipientId).serviceId();
                 if (serviceId.isEmpty()) {
                     continue;
                 }
@@ -58,24 +61,40 @@ public class LegacySenderKeySharedStore {
     }
 
     public static class Storage {
-        List<SharedSenderKey> sharedSenderKeys;
+        private final List<SharedSenderKey> sharedSenderKeys;
 
-        public Storage(List<SharedSenderKey> sharedSenderKeys) {
+        public Storage(@JsonProperty("sharedSenderKeys") List<SharedSenderKey> sharedSenderKeys) {
             super();
             this.sharedSenderKeys = sharedSenderKeys;
         }
 
         public static class SharedSenderKey {
-            long recipientId;
-            int deviceId;
-            String distributionId;
+            private final long recipientId;
+            private final int deviceId;
+            private final String distributionId;
 
-            public SharedSenderKey(long recipientId, int deviceId, String distributionId) {
+            public SharedSenderKey(@JsonProperty("recipientId") long recipientId, @JsonProperty("deviceId") int deviceId, @JsonProperty("distributionId") String distributionId) {
                 super();
                 this.recipientId = recipientId;
                 this.deviceId = deviceId;
                 this.distributionId = distributionId;
             }
+
+            public long recipientId() {
+                return recipientId;
+            }
+
+            public int deviceId() {
+                return deviceId;
+            }
+
+            public String distributionId() {
+                return distributionId;
+            }
+        }
+
+        public List<SharedSenderKey> sharedSenderKeys() {
+            return sharedSenderKeys;
         }
     }
 }

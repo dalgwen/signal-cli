@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.identities;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -100,15 +103,27 @@ public class LegacyIdentityKeyStore {
     }
 
     private static class IdentityStorage {
-        String identityKey;
-        int trustLevel;
-        long addedTimestamp;
+        private final String identityKey;
+        private final int trustLevel;
+        private final long addedTimestamp;
 
-        public IdentityStorage(String identityKey, int trustLevel, long addedTimestamp) {
+        public IdentityStorage(@JsonProperty("identityKey") String identityKey, @JsonProperty("trustLevel") int trustLevel, @JsonProperty("addedTimestamp") long addedTimestamp) {
             super();
             this.identityKey = identityKey;
             this.trustLevel = trustLevel;
             this.addedTimestamp = addedTimestamp;
+        }
+
+        public String identityKey() {
+            return identityKey;
+        }
+
+        public int trustLevel() {
+            return trustLevel;
+        }
+
+        public long addedTimestamp() {
+            return addedTimestamp;
         }
 
     }

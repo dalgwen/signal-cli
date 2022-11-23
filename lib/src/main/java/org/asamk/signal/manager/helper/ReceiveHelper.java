@@ -52,7 +52,7 @@ public class ReceiveHelper {
 
     public void setReceiveConfig(final ReceiveConfig receiveConfig) {
         this.receiveConfig = receiveConfig;
-        dependencies.setAllowStories(!receiveConfig.ignoreStories);
+        dependencies.setAllowStories(!receiveConfig.ignoreStories());
     }
 
     public void setNeedsToRetryFailedMessages(final boolean needsToRetryFailedMessages) {

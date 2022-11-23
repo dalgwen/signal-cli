@@ -204,14 +204,14 @@ public class SendHelper {
     public SendMessageResult resendMessage(final RecipientId recipientId, final long timestamp,
             final MessageSendLogEntry messageSendLogEntry) {
         logger.trace("Resending message {} to {}", timestamp, recipientId);
-        if (messageSendLogEntry.groupId.isEmpty()) {
+        if (messageSendLogEntry.groupId().isEmpty()) {
             return handleSendMessage(recipientId,
                     (messageSender, address, unidentifiedAccess) -> messageSender.resendContent(address,
-                            unidentifiedAccess, timestamp, messageSendLogEntry.content, messageSendLogEntry.contentHint,
-                            Optional.empty(), messageSendLogEntry.urgent));
+                            unidentifiedAccess, timestamp, messageSendLogEntry.content(), messageSendLogEntry.contentHint(),
+                            Optional.empty(), messageSendLogEntry.urgent()));
         }
 
-        final var groupId = messageSendLogEntry.groupId.get();
+        final var groupId = messageSendLogEntry.groupId().get();
         final var group = account.getGroupStore().getGroup(groupId);
 
         if (group == null) {
@@ -226,13 +226,13 @@ public class SendHelper {
         final var senderKeyDistributionMessage = dependencies.getMessageSender()
                 .getOrCreateNewGroupSession(group.getDistributionId());
         final var distributionBytes = ByteString.copyFrom(senderKeyDistributionMessage.serialize());
-        final var contentToSend = messageSendLogEntry.content.toBuilder()
+        final var contentToSend = messageSendLogEntry.content().toBuilder()
                 .setSenderKeyDistributionMessage(distributionBytes).build();
 
         final var result = handleSendMessage(recipientId,
                 (messageSender, address, unidentifiedAccess) -> messageSender.resendContent(address, unidentifiedAccess,
-                        timestamp, contentToSend, messageSendLogEntry.contentHint,
-                        Optional.of(group.getGroupId().serialize()), messageSendLogEntry.urgent));
+                        timestamp, contentToSend, messageSendLogEntry.contentHint(),
+                        Optional.of(group.getGroupId().serialize()), messageSendLogEntry.urgent()));
 
         if (result.isSuccess()) {
             final var address = context.getRecipientHelper().resolveSignalServiceAddress(recipientId);

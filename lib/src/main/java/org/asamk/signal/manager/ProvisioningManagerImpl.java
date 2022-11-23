@@ -103,9 +103,9 @@ class ProvisioningManagerImpl implements ProvisioningManager {
         if (accountPath == null) {
             accountPath = accountsStore.getPathByNumber(number);
         }
-        if (accountPath != null && SignalAccount.accountFileExists(pathConfig.dataPath, accountPath)
+        if (accountPath != null && SignalAccount.accountFileExists(pathConfig.dataPath(), accountPath)
                 && !canRelinkExistingAccount(accountPath)) {
-            throw new UserAlreadyExistsException(number, SignalAccount.getFileName(pathConfig.dataPath, accountPath));
+            throw new UserAlreadyExistsException(number, SignalAccount.getFileName(pathConfig.dataPath(), accountPath));
         }
         if (accountPath == null) {
             accountPath = accountsStore.addAccount(number, aci);
@@ -125,7 +125,7 @@ class ProvisioningManagerImpl implements ProvisioningManager {
 
         SignalAccount account = null;
         try {
-            account = SignalAccount.createOrUpdateLinkedAccount(pathConfig.dataPath, accountPath, number,
+            account = SignalAccount.createOrUpdateLinkedAccount(pathConfig.dataPath(), accountPath, number,
                     serviceEnvironmentConfig.getType(), aci, pni, password, encryptedDeviceName, deviceId,
                     ret.getAciIdentity(), ret.getPniIdentity(), registrationId, pniRegistrationId, profileKey,
                     TrustNewIdentity.ON_FIRST_USE);
@@ -172,7 +172,7 @@ class ProvisioningManagerImpl implements ProvisioningManager {
     private boolean canRelinkExistingAccount(final String accountPath) throws IOException {
         final SignalAccount signalAccount;
         try {
-            signalAccount = SignalAccount.load(pathConfig.dataPath, accountPath, false, TrustNewIdentity.ON_FIRST_USE);
+            signalAccount = SignalAccount.load(pathConfig.dataPath(), accountPath, false, TrustNewIdentity.ON_FIRST_USE);
         } catch (IOException e) {
             logger.debug("Account in use or failed to load.", e);
             return false;

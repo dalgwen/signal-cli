@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.helper;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.IOException;
 import java.security.SignatureException;
 import java.util.Collection;
@@ -44,13 +47,13 @@ public class RecipientHelper {
 
     public SignalServiceAddress resolveSignalServiceAddress(RecipientId recipientId) {
         final var address = account.getRecipientAddressResolver().resolveRecipientAddress(recipientId);
-        if (address.number.isEmpty() || address.serviceId.isPresent()) {
+        if (address.number().isEmpty() || address.serviceId().isPresent()) {
             return address.toSignalServiceAddress();
         }
 
         // Address in recipient store doesn't have a uuid, this shouldn't happen
         // Try to retrieve the uuid from the server
-        final var number = address.number.get();
+        final var number = address.number().get();
         final ServiceId serviceId;
         try {
             serviceId = getRegisteredUser(number);
@@ -86,9 +89,9 @@ public class RecipientHelper {
             throws UnregisteredRecipientException {
         if (recipient instanceof RecipientIdentifier.Uuid) {
             return account.getRecipientResolver()
-                    .resolveRecipient(ServiceId.from(((RecipientIdentifier.Uuid) recipient).uuid));
+                    .resolveRecipient(ServiceId.from(((RecipientIdentifier.Uuid) recipient).uuid()));
         } else {
-            final var number = ((RecipientIdentifier.Number) recipient).number;
+            final var number = ((RecipientIdentifier.Number) recipient).number();
             return account.getRecipientStore().resolveRecipient(number, () -> {
                 try {
                     return getRegisteredUser(number);
@@ -182,14 +185,10 @@ public class RecipientHelper {
     }
 
     public static class RegisteredUser {
-        Optional<ACI> aci;
-        Optional<PNI> pni;
+        private final Optional<ACI> aci;
+        private final Optional<PNI> pni;
 
-        public Optional<PNI> pni() {
-            return pni;
-        }
-
-        public RegisteredUser(Optional<ACI> aci, Optional<PNI> pni) {
+        public RegisteredUser(@JsonProperty("aci") Optional<ACI> aci, @JsonProperty("pni") Optional<PNI> pni) {
             super();
 
             aci = aci.isPresent() && aci.get().equals(ServiceId.UNKNOWN) ? Optional.empty() : aci;
@@ -204,6 +203,14 @@ public class RecipientHelper {
 
         public ServiceId getServiceId() {
             return aci.map(a -> (ServiceId) a).or(this::pni).orElse(null);
+        }
+
+        public Optional<ACI> aci() {
+            return aci;
+        }
+
+        public Optional<PNI> pni() {
+            return pni;
         }
     }
 }

@@ -113,8 +113,8 @@ class RegistrationManagerImpl implements RegistrationManager {
             throws IOException, PinLockedException, IncorrectPinException {
         final var result = NumberVerificationUtils.verifyNumber(verificationCode, pin, pinHelper,
                 this::verifyAccountWithCode);
-        final var response = result.first;
-        final var masterKey = result.second;
+        final var response = result.first();
+        final var masterKey = result.second();
         if (masterKey == null) {
             pin = null;
         }

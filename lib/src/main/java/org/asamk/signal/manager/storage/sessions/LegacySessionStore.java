@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.sessions;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -30,7 +33,7 @@ public class LegacySessionStore {
         final var keys = getKeysLocked(sessionsPath, resolver);
         final var sessions = keys.stream().map(key -> {
             final var record = loadSessionLocked(key, sessionsPath);
-            final var serviceId = addressResolver.resolveRecipientAddress(key.recipientId).serviceId;
+            final var serviceId = addressResolver.resolveRecipientAddress(key.recipientId).serviceId();
             if (record == null || serviceId.isEmpty()) {
                 return null;
             }
@@ -104,13 +107,21 @@ public class LegacySessionStore {
     }
 
     static class Key {
-        RecipientId recipientId;
-        int deviceId;
+        private final RecipientId recipientId;
+        private final int deviceId;
 
-        public Key(RecipientId recipientId, int deviceId) {
+        public Key(@JsonProperty("recipientId") RecipientId recipientId, @JsonProperty("deviceId") int deviceId) {
             super();
             this.recipientId = recipientId;
             this.deviceId = deviceId;
+        }
+
+        public RecipientId recipientId() {
+            return recipientId;
+        }
+
+        public int deviceId() {
+            return deviceId;
         }
 
     }

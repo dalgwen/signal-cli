@@ -78,7 +78,7 @@ public class IdentityHelper {
 
         return Utils.computeSafetyNumber(capabilities.isUuid(), account.getSelfRecipientAddress(),
                 account.getAciIdentityKeyPair().getPublicKey(), address.getServiceId().equals(serviceId) ? address
-                        : new RecipientAddress(serviceId, address.number.orElse(null)),
+                        : new RecipientAddress(serviceId, address.number().orElse(null)),
                 theirIdentityKey);
     }
 

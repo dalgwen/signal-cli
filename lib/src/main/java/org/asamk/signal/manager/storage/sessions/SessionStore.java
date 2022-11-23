@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.sessions;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -214,7 +217,7 @@ public class SessionStore implements SignalServiceSessionStore {
                 return Utils
                         .executeQueryForStream(statement,
                                 res -> new Pair<>(getKeyFromResultSet(res), getSessionRecordFromResultSet(res)))
-                        .filter(pair -> isActive(pair.second)).map(p -> p.first)
+                        .filter(pair -> isActive(pair.second())).map(p -> p.first())
                         .map(key -> key.serviceId.toProtocolAddress(key.deviceId)).collect(Collectors.toSet());
             }
         } catch (SQLException e) {
@@ -380,13 +383,21 @@ public class SessionStore implements SignalServiceSessionStore {
     }
 
     static class Key {
-        ServiceId serviceId;
-        int deviceId;
+        private final ServiceId serviceId;
+        private final int deviceId;
 
-        public Key(ServiceId serviceId, int deviceId) {
+        public Key(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("deviceId") int deviceId) {
             super();
             this.serviceId = serviceId;
             this.deviceId = deviceId;
+        }
+
+        public ServiceId serviceId() {
+            return serviceId;
+        }
+
+        public int deviceId() {
+            return deviceId;
         }
 
     }

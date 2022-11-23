@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.recipients;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -88,26 +91,26 @@ public class LegacyRecipientStore2 {
 
     private static class Storage {
 
-        List<Recipient> recipients;
-        long lastId;
+        private final List<Recipient> recipients;
+        private final long lastId;
 
-        public Storage(List<Recipient> recipients, long lastId) {
+        public Storage(@JsonProperty("recipients") List<Recipient> recipients, @JsonProperty("lastId") long lastId) {
             super();
             this.recipients = recipients;
             this.lastId = lastId;
         }
 
         public static class Recipient {
-            long id;
-            String number;
-            String uuid;
-            String profileKey;
-            String expiringProfileKeyCredential;
-            Contact contact;
-            Profile profile;
+            private final long id;
+            private final String number;
+            private final String uuid;
+            private final String profileKey;
+            private final String expiringProfileKeyCredential;
+            private final Contact contact;
+            private final Profile profile;
 
-            public Recipient(long id, String number, String uuid, String profileKey,
-                    String expiringProfileKeyCredential, Contact contact, Profile profile) {
+            public Recipient(@JsonProperty("id") long id, @JsonProperty("number") String number, @JsonProperty("uuid") String uuid, @JsonProperty("profileKey") String profileKey,
+                    @JsonProperty("expiringProfileKeyCredential") String expiringProfileKeyCredential, @JsonProperty("contact") Contact contact, @JsonProperty("profile") Profile profile) {
                 super();
                 this.id = id;
                 this.number = number;
@@ -119,15 +122,15 @@ public class LegacyRecipientStore2 {
             }
 
             static class Contact {
-                String name;
-                String color;
-                int messageExpirationTime;
-                boolean blocked;
-                boolean archived;
-                boolean profileSharingEnabled;
+                private final String name;
+                private final String color;
+                private final int messageExpirationTime;
+                private final boolean blocked;
+                private final boolean archived;
+                private final boolean profileSharingEnabled;
 
-                public Contact(String name, String color, int messageExpirationTime, boolean blocked, boolean archived,
-                        boolean profileSharingEnabled) {
+                public Contact(@JsonProperty("name") String name, @JsonProperty("color") String color, @JsonProperty("messageExpirationTime") int messageExpirationTime, @JsonProperty("blocked") boolean blocked, @JsonProperty("archived") boolean archived,
+                        @JsonProperty("profileSharingEnabled") boolean profileSharingEnabled) {
                     super();
                     this.name = name;
                     this.color = color;
@@ -136,23 +139,47 @@ public class LegacyRecipientStore2 {
                     this.archived = archived;
                     this.profileSharingEnabled = profileSharingEnabled;
                 }
+
+                public String name() {
+                    return name;
+                }
+
+                public String color() {
+                    return color;
+                }
+
+                public int messageExpirationTime() {
+                    return messageExpirationTime;
+                }
+
+                public boolean blocked() {
+                    return blocked;
+                }
+
+                public boolean archived() {
+                    return archived;
+                }
+
+                public boolean profileSharingEnabled() {
+                    return profileSharingEnabled;
+                }
             }
 
             static class Profile {
 
-                long lastUpdateTimestamp;
-                String givenName;
-                String familyName;
-                String about;
-                String aboutEmoji;
-                String avatarUrlPath;
-                String mobileCoinAddress;
-                String unidentifiedAccessMode;
-                Set<String> capabilities;
+                private final long lastUpdateTimestamp;
+                private final String givenName;
+                private final String familyName;
+                private final String about;
+                private final String aboutEmoji;
+                private final String avatarUrlPath;
+                private final String mobileCoinAddress;
+                private final String unidentifiedAccessMode;
+                private final Set<String> capabilities;
 
-                public Profile(long lastUpdateTimestamp, String givenName, String familyName, String about,
-                        String aboutEmoji, String avatarUrlPath, String mobileCoinAddress,
-                        String unidentifiedAccessMode, Set<String> capabilities) {
+                public Profile(@JsonProperty("lastUpdateTimestamp") long lastUpdateTimestamp, @JsonProperty("givenName") String givenName, @JsonProperty("familyName") String familyName, @JsonProperty("about") String about,
+                        @JsonProperty("aboutEmoji") String aboutEmoji, @JsonProperty("avatarUrlPath") String avatarUrlPath, @JsonProperty("mobileCoinAddress") String mobileCoinAddress,
+                        @JsonProperty("unidentifiedAccessMode") String unidentifiedAccessMode, @JsonProperty("capabilities") Set<String> capabilities) {
                     super();
                     this.lastUpdateTimestamp = lastUpdateTimestamp;
                     this.givenName = givenName;
@@ -165,7 +192,79 @@ public class LegacyRecipientStore2 {
                     this.capabilities = capabilities;
                 }
 
+                public long lastUpdateTimestamp() {
+                    return lastUpdateTimestamp;
+                }
+
+                public String givenName() {
+                    return givenName;
+                }
+
+                public String familyName() {
+                    return familyName;
+                }
+
+                public String about() {
+                    return about;
+                }
+
+                public String aboutEmoji() {
+                    return aboutEmoji;
+                }
+
+                public String avatarUrlPath() {
+                    return avatarUrlPath;
+                }
+
+                public String mobileCoinAddress() {
+                    return mobileCoinAddress;
+                }
+
+                public String unidentifiedAccessMode() {
+                    return unidentifiedAccessMode;
+                }
+
+                public Set<String> capabilities() {
+                    return capabilities;
+                }
+
             }
+
+            public long id() {
+                return id;
+            }
+
+            public String number() {
+                return number;
+            }
+
+            public String uuid() {
+                return uuid;
+            }
+
+            public String profileKey() {
+                return profileKey;
+            }
+
+            public String expiringProfileKeyCredential() {
+                return expiringProfileKeyCredential;
+            }
+
+            public Contact contact() {
+                return contact;
+            }
+
+            public Profile profile() {
+                return profile;
+            }
+        }
+
+        public List<Recipient> getRecipients() {
+            return recipients;
+        }
+
+        public long getLastId() {
+            return lastId;
         }
     }
 }

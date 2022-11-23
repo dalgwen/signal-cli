@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.stickers;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
@@ -29,25 +32,41 @@ public class LegacyStickerStore {
 
     public static class Storage {
 
-        List<Sticker> stickers;
+        private final List<Sticker> stickers;
 
-        public Storage(List<Sticker> stickers) {
+        public Storage(@JsonProperty("stickers") List<Sticker> stickers) {
             super();
             this.stickers = stickers;
         }
 
         private static class Sticker {
-            String packId;
-            String packKey;
-            boolean installed;
+            private final String packId;
+            private final String packKey;
+            private final boolean installed;
 
-            public Sticker(String packId, String packKey, boolean installed) {
+            public Sticker(@JsonProperty("packId") String packId, @JsonProperty("packKey") String packKey, @JsonProperty("installed") boolean installed) {
                 super();
                 this.packId = packId;
                 this.packKey = packKey;
                 this.installed = installed;
             }
 
+            public String packId() {
+                return packId;
+            }
+
+            public String packKey() {
+                return packKey;
+            }
+
+            public boolean installed() {
+                return installed;
+            }
+
+        }
+
+        public List<Sticker> stickers() {
+            return stickers;
         }
     }
 }

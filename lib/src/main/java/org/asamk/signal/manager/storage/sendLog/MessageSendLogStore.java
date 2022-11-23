@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.sendLog;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -93,7 +96,7 @@ public class MessageSendLogStore implements AutoCloseable {
                 statement.setInt(2, deviceId);
                 statement.setLong(3, timestamp);
                 try (var result = Utils.executeQueryForStream(statement, this::getMessageSendLogEntryFromResultSet)) {
-                    return result.filter(Objects::nonNull).filter(e -> !isSenderKey || e.groupId.isPresent())
+                    return result.filter(Objects::nonNull).filter(e -> !isSenderKey || e.groupId().isPresent())
                             .collect(Collectors.toList());
                 }
             }
@@ -352,13 +355,21 @@ public class MessageSendLogStore implements AutoCloseable {
     }
 
     private static class RecipientDevices {
-        ServiceId serviceId;
-        List<Integer> deviceIds;
+        private final ServiceId serviceId;
+        private final List<Integer> deviceIds;
 
-        public RecipientDevices(ServiceId serviceId, List<Integer> deviceIds) {
+        public RecipientDevices(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("deviceIds") List<Integer> deviceIds) {
             super();
             this.serviceId = serviceId;
             this.deviceIds = deviceIds;
+        }
+
+        public ServiceId serviceId() {
+            return serviceId;
+        }
+
+        public List<Integer> deviceIds() {
+            return deviceIds;
         }
 
     }

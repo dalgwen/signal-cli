@@ -39,13 +39,13 @@ public class SignalAccountFiles {
         this.serviceEnvironmentConfig = ServiceConfig.getServiceEnvironmentConfig(this.serviceEnvironment, userAgent);
         this.userAgent = userAgent;
         this.trustNewIdentity = trustNewIdentity;
-        this.accountsStore = new AccountsStore(pathConfig.dataPath, serviceEnvironment, accountPath -> {
-            if (accountPath == null || !SignalAccount.accountFileExists(pathConfig.dataPath, accountPath)) {
+        this.accountsStore = new AccountsStore(pathConfig.dataPath(), serviceEnvironment, accountPath -> {
+            if (accountPath == null || !SignalAccount.accountFileExists(pathConfig.dataPath(), accountPath)) {
                 return null;
             }
 
             try {
-                return SignalAccount.load(pathConfig.dataPath, accountPath, false, trustNewIdentity);
+                return SignalAccount.load(pathConfig.dataPath(), accountPath, false, trustNewIdentity);
             } catch (Exception e) {
                 return null;
             }
@@ -59,12 +59,12 @@ public class SignalAccountFiles {
     public MultiAccountManager initMultiAccountManager() throws IOException {
         final var managers = accountsStore.getAllAccounts().parallelStream().map(a -> {
             try {
-                return initManager(a.number, a.path);
+                return initManager(a.number(), a.path());
             } catch (NotRegisteredException | IOException | AccountCheckException e) {
-                logger.warn("Ignoring {}: {} ({})", a.number, e.getMessage(), e.getClass().getSimpleName());
+                logger.warn("Ignoring {}: {} ({})", a.number(), e.getMessage(), e.getClass().getSimpleName());
                 return null;
             } catch (Throwable e) {
-                logger.error("Failed to load {}: {} ({})", a.number, e.getMessage(), e.getClass().getSimpleName());
+                logger.error("Failed to load {}: {} ({})", a.number(), e.getMessage(), e.getClass().getSimpleName());
                 throw e;
             }
         }).filter(Objects::nonNull).collect(Collectors.toList());
@@ -82,11 +82,11 @@ public class SignalAccountFiles {
         if (accountPath == null) {
             throw new NotRegisteredException();
         }
-        if (!SignalAccount.accountFileExists(pathConfig.dataPath, accountPath)) {
+        if (!SignalAccount.accountFileExists(pathConfig.dataPath(), accountPath)) {
             throw new NotRegisteredException();
         }
 
-        var account = SignalAccount.load(pathConfig.dataPath, accountPath, true, trustNewIdentity);
+        var account = SignalAccount.load(pathConfig.dataPath(), accountPath, true, trustNewIdentity);
         if (!number.equals(account.getNumber())) {
             account.close();
             throw new IOException("Number in account file doesn't match expected number: " + account.getNumber());
@@ -140,7 +140,7 @@ public class SignalAccountFiles {
     public RegistrationManager initRegistrationManager(String number, Consumer<Manager> newManagerListener)
             throws IOException {
         final var accountPath = accountsStore.getPathByNumber(number);
-        if (accountPath == null || !SignalAccount.accountFileExists(pathConfig.dataPath, accountPath)) {
+        if (accountPath == null || !SignalAccount.accountFileExists(pathConfig.dataPath(), accountPath)) {
             final var newAccountPath = accountPath == null ? accountsStore.addAccount(number, null) : accountPath;
             var aciIdentityKey = KeyUtils.generateIdentityKeyPair();
             var pniIdentityKey = KeyUtils.generateIdentityKeyPair();
@@ -148,14 +148,14 @@ public class SignalAccountFiles {
             var pniRegistrationId = KeyHelper.generateRegistrationId(false);
 
             var profileKey = KeyUtils.createProfileKey();
-            var account = SignalAccount.create(pathConfig.dataPath, newAccountPath, number, serviceEnvironment,
+            var account = SignalAccount.create(pathConfig.dataPath(), newAccountPath, number, serviceEnvironment,
                     aciIdentityKey, pniIdentityKey, registrationId, pniRegistrationId, profileKey, trustNewIdentity);
 
             return new RegistrationManagerImpl(account, pathConfig, serviceEnvironmentConfig, userAgent,
                     newManagerListener, new AccountFileUpdaterImpl(accountsStore, newAccountPath));
         }
 
-        var account = SignalAccount.load(pathConfig.dataPath, accountPath, true, trustNewIdentity);
+        var account = SignalAccount.load(pathConfig.dataPath(), accountPath, true, trustNewIdentity);
         if (!number.equals(account.getNumber())) {
             account.close();
             throw new IOException("Number in account file doesn't match expected number: " + account.getNumber());

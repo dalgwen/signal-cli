@@ -86,8 +86,8 @@ public class PinHelper {
     private KbsPinData getRegistrationLockData(String pin, String basicStorageCredentials)
             throws IOException, KeyBackupSystemNoDataException, KeyBackupServicePinException {
         var tokenResponsePair = getTokenResponse(basicStorageCredentials);
-        final var tokenResponse = tokenResponsePair.first;
-        final var keyBackupService = tokenResponsePair.second;
+        final var tokenResponse = tokenResponsePair.first();
+        final var keyBackupService = tokenResponsePair.second();
 
         var registrationLockData = restoreMasterKey(pin, basicStorageCredentials, tokenResponse, keyBackupService);
         if (registrationLockData == null) {

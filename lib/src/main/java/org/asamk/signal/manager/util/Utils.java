@@ -50,8 +50,8 @@ public class Utils {
     public static Pair<StreamDetails, Optional<String>> createStreamDetailsFromDataURI(final String dataURI) {
         final DataURI uri = DataURI.of(dataURI);
 
-        return new Pair<>(new StreamDetails(new ByteArrayInputStream(uri.data), uri.mediaType, uri.data.length),
-                Optional.ofNullable(uri.parameter.get("filename")));
+        return new Pair<>(new StreamDetails(new ByteArrayInputStream(uri.data()), uri.mediaType(), uri.data().length),
+                Optional.ofNullable(uri.parameter().get("filename")));
     }
 
     public static StreamDetails createStreamDetailsFromFile(final File file) throws IOException {
@@ -77,12 +77,12 @@ public class Utils {
         byte[] ownId;
         byte[] theirId;
 
-        if (!isUuidCapable && ownAddress.number.isPresent() && theirAddress.number.isPresent()) {
+        if (!isUuidCapable && ownAddress.number().isPresent() && theirAddress.number().isPresent()) {
             // Version 1: E164 user
             version = 1;
-            ownId = ownAddress.number.get().getBytes();
-            theirId = theirAddress.number.get().getBytes();
-        } else if (isUuidCapable && theirAddress.serviceId.isPresent()) {
+            ownId = ownAddress.number().get().getBytes();
+            theirId = theirAddress.number().get().getBytes();
+        } else if (isUuidCapable && theirAddress.serviceId().isPresent()) {
             // Version 2: UUID user
             version = 2;
             ownId = ownAddress.getServiceId().toByteArray();

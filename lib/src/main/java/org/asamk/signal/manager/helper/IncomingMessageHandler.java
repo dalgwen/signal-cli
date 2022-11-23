@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.helper;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -139,7 +142,7 @@ public final class IncomingMessageHandler {
                     var serviceId = ServiceId.parseOrNull(e.getSender());
                     if (serviceId == null) {
                         // Workaround for libsignal-client issue #492
-                        serviceId = account.getRecipientAddressResolver().resolveRecipientAddress(sender).serviceId
+                        serviceId = account.getRecipientAddressResolver().resolveRecipientAddress(sender).serviceId()
                                 .orElse(null);
                     }
                     if (serviceId != null) {
@@ -270,24 +273,24 @@ public final class IncomingMessageHandler {
                     actions.add(new SendProfileKeyAction(sender));
                 }
             }
-            if (receiveConfig.sendReadReceipts) {
+            if (receiveConfig.sendReadReceipts()) {
                 actions.add(
                         new SendReceiptAction(sender, SignalServiceReceiptMessage.Type.READ, message.getTimestamp()));
             }
 
             actions.addAll(handleSignalServiceDataMessage(message, false, senderDeviceAddress, destination,
-                    receiveConfig.ignoreAttachments));
+                    receiveConfig.ignoreAttachments()));
         }
 
         if (content.getStoryMessage().isPresent()) {
             final var message = content.getStoryMessage().get();
-            actions.addAll(handleSignalServiceStoryMessage(message, sender, receiveConfig.ignoreAttachments));
+            actions.addAll(handleSignalServiceStoryMessage(message, sender, receiveConfig.ignoreAttachments()));
         }
 
         if (content.getSyncMessage().isPresent()) {
             var syncMessage = content.getSyncMessage().get();
             actions.addAll(
-                    handleSyncMessage(envelope, syncMessage, senderDeviceAddress, receiveConfig.ignoreAttachments));
+                    handleSyncMessage(envelope, syncMessage, senderDeviceAddress, receiveConfig.ignoreAttachments()));
         }
 
         return actions;
@@ -318,10 +321,10 @@ public final class IncomingMessageHandler {
 
         var found = false;
         for (final var logEntry : logEntries) {
-            if (logEntry.groupId.isEmpty()) {
+            if (logEntry.groupId().isEmpty()) {
                 continue;
             }
-            final var group = account.getGroupStore().getGroup(logEntry.groupId.get());
+            final var group = account.getGroupStore().getGroup(logEntry.groupId().get());
             if (group == null) {
                 continue;
             }
@@ -437,8 +440,8 @@ public final class IncomingMessageHandler {
                     }
                 }
 
-                if (sticker != null && sticker.isInstalled != installed) {
-                    account.getStickerStore().updateStickerPackInstalled(sticker.packId, installed);
+                if (sticker != null && sticker.isInstalled() != installed) {
+                    account.getStickerStore().updateStickerPackInstalled(sticker.packId(), installed);
                 }
             }
         }
@@ -804,15 +807,27 @@ public final class IncomingMessageHandler {
     }
 
     private static class DeviceAddress {
-        RecipientId recipientId;
-        ServiceId serviceId;
-        int deviceId;
+        private final RecipientId recipientId;
+        private final ServiceId serviceId;
+        private final int deviceId;
 
-        public DeviceAddress(RecipientId recipientId, ServiceId serviceId, int deviceId) {
+        public DeviceAddress(@JsonProperty("recipientId") RecipientId recipientId, @JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("deviceId") int deviceId) {
             super();
             this.recipientId = recipientId;
             this.serviceId = serviceId;
             this.deviceId = deviceId;
+        }
+
+        public RecipientId recipientId() {
+            return recipientId;
+        }
+
+        public ServiceId serviceId() {
+            return serviceId;
+        }
+
+        public int deviceId() {
+            return deviceId;
         }
 
     }

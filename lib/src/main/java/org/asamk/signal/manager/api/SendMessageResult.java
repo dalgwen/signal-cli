@@ -1,21 +1,24 @@
 package org.asamk.signal.manager.api;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import org.asamk.signal.manager.helper.RecipientAddressResolver;
 import org.asamk.signal.manager.storage.recipients.RecipientResolver;
 import org.signal.libsignal.protocol.IdentityKey;
 
 public class SendMessageResult {
-    RecipientAddress address;
-    boolean isSuccess;
-    boolean isNetworkFailure;
-    boolean isUnregisteredFailure;
-    boolean isIdentityFailure;
-    boolean isRateLimitFailure;
-    ProofRequiredException proofRequiredFailure;
+    private final RecipientAddress address;
+    private final boolean isSuccess;
+    private final boolean isNetworkFailure;
+    private final boolean isUnregisteredFailure;
+    private final boolean isIdentityFailure;
+    private final boolean isRateLimitFailure;
+    private final ProofRequiredException proofRequiredFailure;
 
-    public SendMessageResult(RecipientAddress address, boolean isSuccess, boolean isNetworkFailure,
-            boolean isUnregisteredFailure, boolean isIdentityFailure, boolean isRateLimitFailure,
-            ProofRequiredException proofRequiredFailure) {
+    public SendMessageResult(@JsonProperty("address") RecipientAddress address, @JsonProperty("isSuccess") boolean isSuccess, @JsonProperty("isNetworkFailure") boolean isNetworkFailure,
+            @JsonProperty("isUnregisteredFailure") boolean isUnregisteredFailure, @JsonProperty("isIdentityFailure") boolean isIdentityFailure, @JsonProperty("isRateLimitFailure") boolean isRateLimitFailure,
+            @JsonProperty("proofRequiredFailure") ProofRequiredException proofRequiredFailure) {
         super();
         this.address = address;
         this.isSuccess = isSuccess;
@@ -59,5 +62,33 @@ public class SendMessageResult {
                 sendMessageResult.getRateLimitFailure() != null || sendMessageResult.getProofRequiredFailure() != null,
                 sendMessageResult.getProofRequiredFailure() == null ? null
                         : new ProofRequiredException(sendMessageResult.getProofRequiredFailure()));
+    }
+
+    public RecipientAddress address() {
+        return address;
+    }
+
+    public boolean isSuccess() {
+        return isSuccess;
+    }
+
+    public boolean isNetworkFailure() {
+        return isNetworkFailure;
+    }
+
+    public boolean isUnregisteredFailure() {
+        return isUnregisteredFailure;
+    }
+
+    public boolean isIdentityFailure() {
+        return isIdentityFailure;
+    }
+
+    public boolean isRateLimitFailure() {
+        return isRateLimitFailure;
+    }
+
+    public ProofRequiredException proofRequiredFailure() {
+        return proofRequiredFailure;
     }
 }

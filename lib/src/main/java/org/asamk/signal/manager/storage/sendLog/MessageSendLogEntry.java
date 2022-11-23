@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.sendLog;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Optional;
 
 import org.asamk.signal.manager.groups.GroupId;
@@ -8,17 +11,33 @@ import org.whispersystems.signalservice.internal.push.SignalServiceProtos;
 import org.whispersystems.signalservice.internal.push.SignalServiceProtos.Content;
 
 public class MessageSendLogEntry {
-    public Optional<GroupId> groupId;
-    public SignalServiceProtos.Content content;
-    public ContentHint contentHint;
-    public boolean urgent;
+    private final Optional<GroupId> groupId;
+    private final SignalServiceProtos.Content content;
+    private final ContentHint contentHint;
+    private final boolean urgent;
 
-    public MessageSendLogEntry(Optional<GroupId> groupId, Content content, ContentHint contentHint, boolean urgent) {
+    public MessageSendLogEntry(@JsonProperty("groupId") Optional<GroupId> groupId, @JsonProperty("content") Content content, @JsonProperty("contentHint") ContentHint contentHint, @JsonProperty("urgent") boolean urgent) {
         super();
         this.groupId = groupId;
         this.content = content;
         this.contentHint = contentHint;
         this.urgent = urgent;
+    }
+
+    public Optional<GroupId> groupId() {
+        return groupId;
+    }
+
+    public SignalServiceProtos.Content content() {
+        return content;
+    }
+
+    public ContentHint contentHint() {
+        return contentHint;
+    }
+
+    public boolean urgent() {
+        return urgent;
     }
 
 }

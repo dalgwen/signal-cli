@@ -2,8 +2,8 @@ package org.asamk.signal.manager.api;
 
 public class Pair<T, U> {
 
-    public T first;
-    public U second;
+    private final T first;
+    private final U second;
 
     public T first() {
         return first;

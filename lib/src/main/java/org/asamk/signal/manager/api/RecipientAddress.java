@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.api;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Optional;
 import java.util.UUID;
 
@@ -7,7 +10,12 @@ import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.api.push.SignalServiceAddress;
 
 public class RecipientAddress {
-    public RecipientAddress(Optional<UUID> uuid, Optional<String> number) {
+    private final Optional<UUID> uuid;
+    private final Optional<String> number;
+
+    public static final UUID UNKNOWN_UUID = ServiceId.UNKNOWN.uuid();
+
+    public RecipientAddress(@JsonProperty("uuid") Optional<UUID> uuid, @JsonProperty("number") Optional<String> number) {
         super();
 
         uuid = uuid.isPresent() && uuid.get().equals(UNKNOWN_UUID) ? Optional.empty() : uuid;
@@ -19,20 +27,15 @@ public class RecipientAddress {
         this.number = number;
     }
 
-    Optional<UUID> uuid;
-    Optional<String> number;
-
-    public static final UUID UNKNOWN_UUID = ServiceId.UNKNOWN.uuid();
-
-    public RecipientAddress(UUID uuid, String e164) {
+    public RecipientAddress(@JsonProperty("uuid") UUID uuid, @JsonProperty("e164") String e164) {
         this(Optional.ofNullable(uuid), Optional.ofNullable(e164));
     }
 
-    public RecipientAddress(SignalServiceAddress address) {
+    public RecipientAddress(@JsonProperty("address") SignalServiceAddress address) {
         this(Optional.of(address.getServiceId().uuid()), address.getNumber());
     }
 
-    public RecipientAddress(UUID uuid) {
+    public RecipientAddress(@JsonProperty("uuid") UUID uuid) {
         this(Optional.of(uuid), Optional.empty());
     }
 
@@ -67,5 +70,17 @@ public class RecipientAddress {
 
     public SignalServiceAddress toSignalServiceAddress() {
         return new SignalServiceAddress(getServiceId(), number);
+    }
+
+    public Optional<UUID> uuid() {
+        return uuid;
+    }
+
+    public Optional<String> number() {
+        return number;
+    }
+
+    public static UUID getUnknownUuid() {
+        return UNKNOWN_UUID;
     }
 }

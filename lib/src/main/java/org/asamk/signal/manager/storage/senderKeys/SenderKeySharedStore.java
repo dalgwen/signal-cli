@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.senderKeys;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -186,13 +189,21 @@ public class SenderKeySharedStore {
     }
 
     static class SenderKeySharedEntry {
-        ServiceId serviceId;
-        int deviceId;
+        private final ServiceId serviceId;
+        private final int deviceId;
 
-        public SenderKeySharedEntry(ServiceId serviceId, int deviceId) {
+        public SenderKeySharedEntry(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("deviceId") int deviceId) {
             super();
             this.serviceId = serviceId;
             this.deviceId = deviceId;
+        }
+
+        public ServiceId serviceId() {
+            return serviceId;
+        }
+
+        public int deviceId() {
+            return deviceId;
         }
 
     }

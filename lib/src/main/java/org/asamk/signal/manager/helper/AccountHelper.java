@@ -160,7 +160,7 @@ public class AccountHelper {
         var verificationCode = dependencies.getAccountManager().getNewDeviceVerificationCode();
 
         try {
-            dependencies.getAccountManager().addDevice(deviceLinkInfo.deviceIdentifier, deviceLinkInfo.deviceKey,
+            dependencies.getAccountManager().addDevice(deviceLinkInfo.deviceIdentifier(), deviceLinkInfo.deviceKey(),
                     account.getAciIdentityKeyPair(), account.getPniIdentityKeyPair(), account.getProfileKey(),
                     verificationCode);
         } catch (InvalidKeyException e) {

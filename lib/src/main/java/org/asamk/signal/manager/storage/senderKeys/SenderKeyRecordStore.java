@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.senderKeys;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -123,7 +126,7 @@ public class SenderKeyRecordStore implements SenderKeyStore {
         try (final var connection = database.getConnection()) {
             connection.setAutoCommit(false);
             for (final var pair : senderKeys) {
-                storeSenderKey(connection, pair.first, pair.second);
+                storeSenderKey(connection, pair.first(), pair.second());
             }
             connection.commit();
         } catch (SQLException e) {
@@ -203,15 +206,27 @@ public class SenderKeyRecordStore implements SenderKeyStore {
     }
 
     static class Key {
-        ServiceId serviceId;
-        int deviceId;
-        UUID distributionId;
+        private final ServiceId serviceId;
+        private final int deviceId;
+        private final UUID distributionId;
 
-        public Key(ServiceId serviceId, int deviceId, UUID distributionId) {
+        public Key(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("deviceId") int deviceId, @JsonProperty("distributionId") UUID distributionId) {
             super();
             this.serviceId = serviceId;
             this.deviceId = deviceId;
             this.distributionId = distributionId;
+        }
+
+        public ServiceId serviceId() {
+            return serviceId;
+        }
+
+        public int deviceId() {
+            return deviceId;
+        }
+
+        public UUID distributionId() {
+            return distributionId;
         }
 
     }

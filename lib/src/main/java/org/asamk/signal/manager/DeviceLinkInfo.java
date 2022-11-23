@@ -1,5 +1,8 @@
 package org.asamk.signal.manager;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import static org.whispersystems.signalservice.internal.util.Util.isEmpty;
 
 import java.net.URI;
@@ -16,10 +19,10 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
 public class DeviceLinkInfo {
 
-    public String deviceIdentifier;
-    public ECPublicKey deviceKey;
+    private final String deviceIdentifier;
+    private final ECPublicKey deviceKey;
 
-    public DeviceLinkInfo(String deviceIdentifier, ECPublicKey deviceKey) {
+    public DeviceLinkInfo(@JsonProperty("deviceIdentifier") String deviceIdentifier, @JsonProperty("deviceKey") ECPublicKey deviceKey) {
         super();
         this.deviceIdentifier = deviceIdentifier;
         this.deviceKey = deviceKey;
@@ -63,5 +66,13 @@ public class DeviceLinkInfo {
         } catch (URISyntaxException e) {
             throw new AssertionError(e);
         }
+    }
+
+    public String deviceIdentifier() {
+        return deviceIdentifier;
+    }
+
+    public ECPublicKey deviceKey() {
+        return deviceKey;
     }
 }

@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.api;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.UUID;
 
 import org.asamk.signal.manager.groups.GroupId;
@@ -42,10 +45,10 @@ public interface RecipientIdentifier {
         }
 
         static Single fromAddress(RecipientAddress address) {
-            if (address.number.isPresent()) {
-                return new Number(address.number.get());
-            } else if (address.uuid.isPresent()) {
-                return new Uuid(address.uuid.get());
+            if (address.number().isPresent()) {
+                return new Number(address.number().get());
+            } else if (address.uuid().isPresent()) {
+                return new Uuid(address.uuid().get());
             }
             throw new AssertionError("RecipientAddress without identifier");
         }
@@ -54,9 +57,9 @@ public interface RecipientIdentifier {
     }
 
     public static class Uuid implements Single {
-        public UUID uuid;
+        private final UUID uuid;
 
-        public Uuid(UUID uuid) {
+        public Uuid(@JsonProperty("uuid") UUID uuid) {
             super();
             this.uuid = uuid;
         }
@@ -70,12 +73,16 @@ public interface RecipientIdentifier {
         public RecipientAddress toPartialRecipientAddress() {
             return new RecipientAddress(uuid);
         }
+
+        public UUID uuid() {
+            return uuid;
+        }
     }
 
     public static class Number implements Single {
-        public String number;
+        private final String number;
 
-        public Number(String number) {
+        public Number(@JsonProperty("number") String number) {
             super();
             this.number = number;
         }
@@ -89,14 +96,27 @@ public interface RecipientIdentifier {
         public RecipientAddress toPartialRecipientAddress() {
             return new RecipientAddress(null, number);
         }
+
+        public String number() {
+            return number;
+        }
     }
 
     public static class Group implements RecipientIdentifier {
-        public GroupId groupId;
+        private final GroupId groupId;
+
+        public Group(@JsonProperty("groupId") GroupId groupId) {
+            super();
+            this.groupId = groupId;
+        }
 
         @Override
         public String getIdentifier() {
             return groupId.toBase64();
+        }
+
+        public GroupId groupId() {
+            return groupId;
         }
     }
 }

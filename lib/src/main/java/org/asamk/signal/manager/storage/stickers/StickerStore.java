@@ -68,9 +68,9 @@ public class StickerStore {
                 + "                VALUES (?, ?, ?)\n" + "", TABLE_STICKER);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
-                statement.setBytes(1, stickerPack.packId.serialize());
-                statement.setBytes(2, stickerPack.packKey);
-                statement.setBoolean(3, stickerPack.isInstalled);
+                statement.setBytes(1, stickerPack.packId().serialize());
+                statement.setBytes(2, stickerPack.packKey());
+                statement.setBoolean(3, stickerPack.isInstalled());
                 statement.executeUpdate();
             }
         } catch (SQLException e) {
@@ -104,9 +104,9 @@ public class StickerStore {
             }
             try (final var statement = connection.prepareStatement(sql)) {
                 for (final var sticker : stickerPacks) {
-                    statement.setBytes(1, sticker.packId.serialize());
-                    statement.setBytes(2, sticker.packKey);
-                    statement.setBoolean(3, sticker.isInstalled);
+                    statement.setBytes(1, sticker.packId().serialize());
+                    statement.setBytes(2, sticker.packKey());
+                    statement.setBoolean(3, sticker.isInstalled());
                     statement.executeUpdate();
                 }
             }

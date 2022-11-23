@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.groups;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -120,18 +123,18 @@ public class LegacyGroupStore {
         public List<GroupVx> groups;
 
         private static class GroupV1 extends GroupVx {
-            String groupId;
-            String expectedV2Id;
-            String name;
-            String color;
-            int messageExpirationTime;
-            boolean blocked;
-            boolean archived;
+            private final String groupId;
+            private final String expectedV2Id;
+            private final String name;
+            private final String color;
+            private final int messageExpirationTime;
+            private final boolean blocked;
+            private final boolean archived;
             @JsonDeserialize(using = MembersDeserializer.class)
             List<Member> members;
 
-            public GroupV1(String groupId, String expectedV2Id, String name, String color, int messageExpirationTime,
-                    boolean blocked, boolean archived, List<Member> members) {
+            public GroupV1(@JsonProperty("groupId") String groupId, @JsonProperty("expectedV2Id") String expectedV2Id, @JsonProperty("name") String name, @JsonProperty("color") String color, @JsonProperty("messageExpirationTime") int messageExpirationTime,
+                    @JsonProperty("blocked") boolean blocked, @JsonProperty("archived") boolean archived, @JsonProperty("members") List<Member> members) {
                 super();
                 this.groupId = groupId;
                 this.expectedV2Id = expectedV2Id;
@@ -144,27 +147,47 @@ public class LegacyGroupStore {
             }
 
             static class Member {
-                Long recipientId;
-                String uuid;
-                String number;
+                private final Long recipientId;
+                private final String uuid;
+                private final String number;
 
-                public Member(Long recipientId, String uuid, String number) {
+                public Member(@JsonProperty("recipientId") Long recipientId, @JsonProperty("uuid") String uuid, @JsonProperty("number") String number) {
                     super();
                     this.recipientId = recipientId;
                     this.uuid = uuid;
                     this.number = number;
                 }
 
+                public Long recipientId() {
+                    return recipientId;
+                }
+
+                public String uuid() {
+                    return uuid;
+                }
+
+                public String number() {
+                    return number;
+                }
+
             }
 
             static class JsonRecipientAddress {
-                String uuid;
-                String number;
+                private final String uuid;
+                private final String number;
 
-                public JsonRecipientAddress(String uuid, String number) {
+                public JsonRecipientAddress(@JsonProperty("uuid") String uuid, @JsonProperty("number") String number) {
                     super();
                     this.uuid = uuid;
                     this.number = number;
+                }
+
+                public String uuid() {
+                    return uuid;
+                }
+
+                public String number() {
+                    return number;
                 }
 
             }
@@ -190,6 +213,42 @@ public class LegacyGroupStore {
                     return addresses;
                 }
             }
+
+            public List<Member> getMembers() {
+                return members;
+            }
+
+            public void setMembers(List<Member> members) {
+                this.members = members;
+            }
+
+            public String groupId() {
+                return groupId;
+            }
+
+            public String expectedV2Id() {
+                return expectedV2Id;
+            }
+
+            public String name() {
+                return name;
+            }
+
+            public String color() {
+                return color;
+            }
+
+            public int messageExpirationTime() {
+                return messageExpirationTime;
+            }
+
+            public boolean blocked() {
+                return blocked;
+            }
+
+            public boolean archived() {
+                return archived;
+            }
         }
 
         static class GroupVx {
@@ -197,22 +256,50 @@ public class LegacyGroupStore {
         }
 
         static class GroupV2 extends GroupVx {
-            String groupId;
-            String masterKey;
-            String distributionId;
+            private final String groupId;
+            private final String masterKey;
+            private final String distributionId;
             @JsonInclude(JsonInclude.Include.NON_DEFAULT)
             boolean blocked;
             @JsonInclude(JsonInclude.Include.NON_DEFAULT)
             boolean permissionDenied;
 
-            public GroupV2(String groupId, String masterKey, String distributionId, boolean blocked,
-                    boolean permissionDenied) {
+            public GroupV2(@JsonProperty("groupId") String groupId, @JsonProperty("masterKey") String masterKey, @JsonProperty("distributionId") String distributionId, @JsonProperty("blocked") boolean blocked,
+                    @JsonProperty("permissionDenied") boolean permissionDenied) {
                 super();
                 this.groupId = groupId;
                 this.masterKey = masterKey;
                 this.distributionId = distributionId;
                 this.blocked = blocked;
                 this.permissionDenied = permissionDenied;
+            }
+
+            public boolean isBlocked() {
+                return blocked;
+            }
+
+            public void setBlocked(boolean blocked) {
+                this.blocked = blocked;
+            }
+
+            public boolean isPermissionDenied() {
+                return permissionDenied;
+            }
+
+            public void setPermissionDenied(boolean permissionDenied) {
+                this.permissionDenied = permissionDenied;
+            }
+
+            public String groupId() {
+                return groupId;
+            }
+
+            public String masterKey() {
+                return masterKey;
+            }
+
+            public String distributionId() {
+                return distributionId;
             }
 
         }

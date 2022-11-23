@@ -37,7 +37,7 @@ public class Utils {
     public static ObjectMapper createStorageObjectMapper() {
         final ObjectMapper objectMapper = new ObjectMapper();
 
-        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.PUBLIC_ONLY);
+        objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
         objectMapper.enable(SerializationFeature.INDENT_OUTPUT); // for pretty print
         objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         objectMapper.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);

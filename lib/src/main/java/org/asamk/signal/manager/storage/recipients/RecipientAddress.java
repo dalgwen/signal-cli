@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.recipients;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Optional;
 
 import org.whispersystems.signalservice.api.push.PNI;
@@ -8,11 +11,11 @@ import org.whispersystems.signalservice.api.push.SignalServiceAddress;
 
 public class RecipientAddress {
 
-    public Optional<ServiceId> serviceId;
-    public Optional<PNI> pni;
-    public Optional<String> number;
+    private final Optional<ServiceId> serviceId;
+    private final Optional<PNI> pni;
+    private final Optional<String> number;
 
-    public RecipientAddress(Optional<ServiceId> serviceId, Optional<PNI> pni, Optional<String> number) {
+    public RecipientAddress(@JsonProperty("serviceId") Optional<ServiceId> serviceId, @JsonProperty("pni") Optional<PNI> pni, @JsonProperty("number") Optional<String> number) {
         super();
 
         if (serviceId.isPresent() && serviceId.get().equals(ServiceId.UNKNOWN)) {
@@ -34,28 +37,32 @@ public class RecipientAddress {
 
     }
 
-    public RecipientAddress(Optional<ServiceId> serviceId, Optional<String> number) {
+    public RecipientAddress(@JsonProperty("serviceId") Optional<ServiceId> serviceId, @JsonProperty("number") Optional<String> number) {
         this(serviceId, Optional.empty(), number);
     }
 
-    public RecipientAddress(ServiceId serviceId, String e164) {
+    public RecipientAddress(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("e164") String e164) {
         this(Optional.ofNullable(serviceId), Optional.empty(), Optional.ofNullable(e164));
     }
 
-    public RecipientAddress(ServiceId serviceId, PNI pni, String e164) {
+    public RecipientAddress(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("pni") PNI pni, @JsonProperty("e164") String e164) {
         this(Optional.ofNullable(serviceId), Optional.ofNullable(pni), Optional.ofNullable(e164));
     }
 
-    public RecipientAddress(SignalServiceAddress address) {
+    public RecipientAddress(@JsonProperty("address") SignalServiceAddress address) {
         this(Optional.of(address.getServiceId()), Optional.empty(), address.getNumber());
     }
 
-    public RecipientAddress(ServiceId serviceId) {
+    public RecipientAddress(@JsonProperty("serviceId") ServiceId serviceId) {
         this(Optional.of(serviceId), Optional.empty());
     }
 
     public ServiceId getServiceId() {
         return serviceId.orElse(ServiceId.UNKNOWN);
+    }
+
+    public Optional<ServiceId> serviceId() {
+        return serviceId;
     }
 
     public String getIdentifier() {
@@ -92,5 +99,13 @@ public class RecipientAddress {
 
     public org.asamk.signal.manager.api.RecipientAddress toApiRecipientAddress() {
         return new org.asamk.signal.manager.api.RecipientAddress(serviceId.map(ServiceId::uuid), number);
+    }
+
+    public Optional<PNI> pni() {
+        return pni;
+    }
+
+    public Optional<String> number() {
+        return number;
     }
 }

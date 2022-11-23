@@ -1,17 +1,20 @@
 package org.asamk.signal.manager.storage.stickerPacks;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 import org.asamk.signal.manager.api.StickerPack;
 
 public class JsonStickerPack {
 
-    public String title;
-    public String author;
-    public JsonSticker cover;
-    public List<JsonSticker> stickers;
+    private final String title;
+    private final String author;
+    private final JsonSticker cover;
+    private final List<JsonSticker> stickers;
 
-    public JsonStickerPack(String title, String author, JsonSticker cover, List<JsonSticker> stickers) {
+    public JsonStickerPack(@JsonProperty("title") String title, @JsonProperty("author") String author, @JsonProperty("cover") JsonSticker cover, @JsonProperty("stickers") List<JsonSticker> stickers) {
         super();
         this.title = title;
         this.author = author;
@@ -20,12 +23,12 @@ public class JsonStickerPack {
     }
 
     public static class JsonSticker {
-        public Integer id;
-        public String emoji;
-        public String file;
-        public String contentType;
+        private final Integer id;
+        private final String emoji;
+        private final String file;
+        private final String contentType;
 
-        public JsonSticker(Integer id, String emoji, String file, String contentType) {
+        public JsonSticker(@JsonProperty("id") Integer id, @JsonProperty("emoji") String emoji, @JsonProperty("file") String file, @JsonProperty("contentType") String contentType) {
             super();
             this.id = id;
             this.emoji = emoji;
@@ -36,5 +39,37 @@ public class JsonStickerPack {
         public StickerPack.Sticker toApi() {
             return new StickerPack.Sticker(id == null ? Integer.parseInt(file) : id, emoji, contentType);
         }
+
+        public Integer id() {
+            return id;
+        }
+
+        public String emoji() {
+            return emoji;
+        }
+
+        public String file() {
+            return file;
+        }
+
+        public String contentType() {
+            return contentType;
+        }
+    }
+
+    public String title() {
+        return title;
+    }
+
+    public String author() {
+        return author;
+    }
+
+    public JsonSticker cover() {
+        return cover;
+    }
+
+    public List<JsonSticker> stickers() {
+        return stickers;
     }
 }

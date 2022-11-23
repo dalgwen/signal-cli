@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.storage.senderKeys;
 
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -34,7 +37,7 @@ public class LegacySenderKeyRecordStore {
 
         final var senderKeys = parseFileNames(files, resolver).stream().map(key -> {
             final var record = loadSenderKeyLocked(key, senderKeysPath);
-            final var serviceId = addressResolver.resolveRecipientAddress(key.recipientId).serviceId;
+            final var serviceId = addressResolver.resolveRecipientAddress(key.recipientId).serviceId();
             if (record == null || serviceId.isEmpty()) {
                 return null;
             }
@@ -100,7 +103,7 @@ public class LegacySenderKeyRecordStore {
         int deviceId;
         UUID distributionId;
 
-        public Key(RecipientId recipientId, int deviceId, UUID distributionId) {
+        public Key(@JsonProperty("recipientId") RecipientId recipientId, @JsonProperty("deviceId") int deviceId, @JsonProperty("distributionId") UUID distributionId) {
             super();
             this.recipientId = recipientId;
             this.deviceId = deviceId;

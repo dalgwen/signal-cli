@@ -348,8 +348,8 @@ public class SignalAccount implements Closeable {
         getRecipientStore().deleteRecipientData(recipientId);
         getMessageCache().deleteMessages(recipientId);
         final var recipientAddress = getRecipientStore().resolveRecipientAddress(recipientId);
-        if (recipientAddress.serviceId.isPresent()) {
-            final var serviceId = recipientAddress.serviceId.get();
+        if (recipientAddress.serviceId().isPresent()) {
+            final var serviceId = recipientAddress.serviceId().get();
             getAciSessionStore().deleteAllSessions(serviceId);
             getPniSessionStore().deleteAllSessions(serviceId);
             getIdentityKeyStore().deleteIdentity(serviceId);
@@ -709,7 +709,7 @@ public class SignalAccount implements Closeable {
         if (legacySignalProtocolStore != null && legacySignalProtocolStore.getLegacyIdentityKeyStore() != null) {
             logger.debug("Migrating legacy identity session store.");
             for (var identity : legacySignalProtocolStore.getLegacyIdentityKeyStore().getIdentities()) {
-                if (identity.getAddress().serviceId.isEmpty()) {
+                if (identity.getAddress().serviceId().isEmpty()) {
                     continue;
                 }
                 final var serviceId = identity.getAddress().getServiceId();
