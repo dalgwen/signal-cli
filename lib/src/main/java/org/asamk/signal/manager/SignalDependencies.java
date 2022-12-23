@@ -56,7 +56,7 @@ public class SignalDependencies {
     private ProfileService profileService;
     private SignalServiceCipher cipher;
 
-    SignalDependencies(final ServiceEnvironmentConfig serviceEnvironmentConfig, final String userAgent,
+    public SignalDependencies(final ServiceEnvironmentConfig serviceEnvironmentConfig, final String userAgent,
             final CredentialsProvider credentialsProvider, final SignalServiceDataStore dataStore,
             final ExecutorService executor, final SignalSessionLock sessionLock) {
         this.serviceEnvironmentConfig = serviceEnvironmentConfig;

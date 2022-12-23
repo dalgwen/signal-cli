@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.util;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -12,14 +9,16 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@SuppressWarnings({ "java:S6218" })
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class DataURI {
 
     private final String mediaType;
     private final Map<String, String> parameter;
     private final byte[] data;
 
-    public DataURI(@JsonProperty("mediaType") String mediaType, @JsonProperty("parameter") Map<String, String> parameter, @JsonProperty("data") byte[] data) {
+    public DataURI(@JsonProperty("mediaType") String mediaType,
+            @JsonProperty("parameter") Map<String, String> parameter, @JsonProperty("data") byte[] data) {
         super();
         this.mediaType = mediaType;
         this.parameter = parameter;

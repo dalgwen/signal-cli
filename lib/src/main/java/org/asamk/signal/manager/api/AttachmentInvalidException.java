@@ -1,5 +1,6 @@
 package org.asamk.signal.manager.api;
 
+@SuppressWarnings("serial")
 public class AttachmentInvalidException extends Exception {
 
     public AttachmentInvalidException(String message) {

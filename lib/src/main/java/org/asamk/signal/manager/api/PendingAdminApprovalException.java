@@ -1,5 +1,6 @@
 package org.asamk.signal.manager.api;
 
+@SuppressWarnings("serial")
 public class PendingAdminApprovalException extends Exception {
 
     public PendingAdminApprovalException(final String message) {

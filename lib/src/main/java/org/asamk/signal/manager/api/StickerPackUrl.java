@@ -1,7 +1,6 @@
 package org.asamk.signal.manager.api;
 
-import org.asamk.signal.manager.util.Utils;
-import org.whispersystems.signalservice.internal.util.Hex;
+import static org.whispersystems.signalservice.internal.util.Util.isEmpty;
 
 import java.io.IOException;
 import java.net.URI;
@@ -9,7 +8,8 @@ import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
-import static org.whispersystems.signalservice.internal.util.Util.isEmpty;
+import org.asamk.signal.manager.util.Utils;
+import org.whispersystems.signalservice.internal.util.Hex;
 
 public final class StickerPackUrl {
 
@@ -55,13 +55,9 @@ public final class StickerPackUrl {
 
     public URI getUrl() {
         try {
-            return new URI("https",
-                    "signal.art",
-                    "/addstickers/",
-                    "pack_id="
-                            + URLEncoder.encode(Hex.toStringCondensed(packId.serialize()), StandardCharsets.UTF_8)
-                            + "&pack_key="
-                            + URLEncoder.encode(Hex.toStringCondensed(packKey), StandardCharsets.UTF_8));
+            return new URI("https", "signal.art", "/addstickers/",
+                    "pack_id=" + URLEncoder.encode(Hex.toStringCondensed(packId.serialize()), StandardCharsets.UTF_8)
+                            + "&pack_key=" + URLEncoder.encode(Hex.toStringCondensed(packKey), StandardCharsets.UTF_8));
         } catch (URISyntaxException e) {
             throw new AssertionError(e);
         }
@@ -75,6 +71,7 @@ public final class StickerPackUrl {
         return packKey;
     }
 
+    @SuppressWarnings("serial")
     public final static class InvalidStickerPackLinkException extends Exception {
 
         public InvalidStickerPackLinkException(String message) {

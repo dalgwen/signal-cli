@@ -1,5 +1,6 @@
 package org.asamk.signal.manager.api;
 
+@SuppressWarnings("serial")
 public class AccountCheckException extends Exception {
 
     public AccountCheckException(String message) {

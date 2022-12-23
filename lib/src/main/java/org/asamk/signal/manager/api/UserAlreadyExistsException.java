@@ -2,6 +2,7 @@ package org.asamk.signal.manager.api;
 
 import java.io.File;
 
+@SuppressWarnings("serial")
 public class UserAlreadyExistsException extends Exception {
 
     private final String number;

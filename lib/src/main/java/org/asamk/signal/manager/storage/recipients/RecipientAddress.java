@@ -1,13 +1,12 @@
 package org.asamk.signal.manager.storage.recipients;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Optional;
 
 import org.whispersystems.signalservice.api.push.PNI;
 import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.api.push.SignalServiceAddress;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class RecipientAddress {
 
@@ -15,29 +14,33 @@ public class RecipientAddress {
     private final Optional<PNI> pni;
     private final Optional<String> number;
 
-    public RecipientAddress(@JsonProperty("serviceId") Optional<ServiceId> serviceId, @JsonProperty("pni") Optional<PNI> pni, @JsonProperty("number") Optional<String> number) {
+    @SuppressWarnings("null")
+    public RecipientAddress(@JsonProperty("serviceId") Optional<ServiceId> serviceId,
+            @JsonProperty("pni") Optional<PNI> pni, @JsonProperty("number") Optional<String> number) {
         super();
-
-        if (serviceId.isPresent() && serviceId.get().equals(ServiceId.UNKNOWN)) {
-            serviceId = Optional.empty();
+        Optional<PNI> _pni = pni;
+        Optional<ServiceId> _serviceId = serviceId;
+        if (_serviceId.isPresent() && _serviceId.get().equals(ServiceId.UNKNOWN)) {
+            _serviceId = Optional.empty();
         }
-        if (pni.isPresent() && pni.get().equals(ServiceId.UNKNOWN)) {
-            pni = Optional.empty();
+        if (_pni.isPresent() && _pni.get().equals(ServiceId.UNKNOWN)) {
+            _pni = Optional.empty();
         }
-        if (serviceId.isEmpty() && pni.isPresent()) {
-            serviceId = Optional.of(pni.get());
+        if (_serviceId.isEmpty() && _pni.isPresent()) {
+            _serviceId = Optional.of(_pni.get());
         }
-        if (serviceId.isEmpty() && number.isEmpty()) {
+        if (_serviceId.isEmpty() && number.isEmpty()) {
             throw new AssertionError("Must have either a ServiceId or E164 number!");
         }
 
-        this.serviceId = serviceId;
-        this.pni = pni;
+        this.serviceId = _serviceId;
+        this.pni = _pni;
         this.number = number;
 
     }
 
-    public RecipientAddress(@JsonProperty("serviceId") Optional<ServiceId> serviceId, @JsonProperty("number") Optional<String> number) {
+    public RecipientAddress(@JsonProperty("serviceId") Optional<ServiceId> serviceId,
+            @JsonProperty("number") Optional<String> number) {
         this(serviceId, Optional.empty(), number);
     }
 
@@ -45,7 +48,8 @@ public class RecipientAddress {
         this(Optional.ofNullable(serviceId), Optional.empty(), Optional.ofNullable(e164));
     }
 
-    public RecipientAddress(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("pni") PNI pni, @JsonProperty("e164") String e164) {
+    public RecipientAddress(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("pni") PNI pni,
+            @JsonProperty("e164") String e164) {
         this(Optional.ofNullable(serviceId), Optional.ofNullable(pni), Optional.ofNullable(e164));
     }
 

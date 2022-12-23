@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.helper;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -70,6 +67,8 @@ import org.whispersystems.signalservice.api.messages.multidevice.StickerPackOper
 import org.whispersystems.signalservice.api.push.PNI;
 import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.api.push.SignalServiceAddress;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public final class IncomingMessageHandler {
 
@@ -177,6 +176,7 @@ public final class IncomingMessageHandler {
         return new Pair<>(actions, exception);
     }
 
+    @SuppressWarnings("null")
     private List<HandleAction> checkAndHandleMessage(final SignalServiceEnvelope envelope,
             final SignalServiceContent content, final ReceiveConfig receiveConfig,
             final Manager.ReceiveMessageHandler handler, final Exception exception) {
@@ -339,6 +339,7 @@ public final class IncomingMessageHandler {
         }
     }
 
+    @SuppressWarnings("incomplete-switch")
     private List<HandleAction> handleSyncMessage(final SignalServiceEnvelope envelope,
             final SignalServiceSyncMessage syncMessage, final DeviceAddress sender, final boolean ignoreAttachments) {
         var actions = new ArrayList<HandleAction>();
@@ -597,6 +598,7 @@ public final class IncomingMessageHandler {
         return false;
     }
 
+    @SuppressWarnings("incomplete-switch")
     private List<HandleAction> handleSignalServiceDataMessage(SignalServiceDataMessage message, boolean isSync,
             DeviceAddress source, DeviceAddress destination, boolean ignoreAttachments) {
         var actions = new ArrayList<HandleAction>();
@@ -811,21 +813,25 @@ public final class IncomingMessageHandler {
         private final ServiceId serviceId;
         private final int deviceId;
 
-        public DeviceAddress(@JsonProperty("recipientId") RecipientId recipientId, @JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("deviceId") int deviceId) {
+        public DeviceAddress(@JsonProperty("recipientId") RecipientId recipientId,
+                @JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("deviceId") int deviceId) {
             super();
             this.recipientId = recipientId;
             this.serviceId = serviceId;
             this.deviceId = deviceId;
         }
 
+        @SuppressWarnings("unused")
         public RecipientId recipientId() {
             return recipientId;
         }
 
+        @SuppressWarnings("unused")
         public ServiceId serviceId() {
             return serviceId;
         }
 
+        @SuppressWarnings("unused")
         public int deviceId() {
             return deviceId;
         }

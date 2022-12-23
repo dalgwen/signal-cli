@@ -431,6 +431,7 @@ public class SignalAccount implements Closeable {
         return !(!f.exists() || f.isDirectory());
     }
 
+    @SuppressWarnings("null")
     private void load(File dataPath, String accountPath, final TrustNewIdentity trustNewIdentity) throws IOException {
         this.dataPath = dataPath;
         this.accountPath = accountPath;
@@ -652,6 +653,7 @@ public class SignalAccount implements Closeable {
         }
     }
 
+    @SuppressWarnings("null")
     private boolean loadLegacyStores(final JsonNode rootNode,
             final LegacyJsonSignalProtocolStore legacySignalProtocolStore) {
         var migrated = false;
@@ -864,6 +866,7 @@ public class SignalAccount implements Closeable {
         }
     }
 
+    @SuppressWarnings("resource")
     private static Pair<FileChannel, FileLock> openFileChannel(File fileName, boolean waitForLock) throws IOException {
         var fileChannel = new RandomAccessFile(fileName, "rw").getChannel();
         try {

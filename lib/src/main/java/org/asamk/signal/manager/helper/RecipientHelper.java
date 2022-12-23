@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.helper;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.io.IOException;
 import java.security.SignatureException;
 import java.util.Collection;
@@ -30,6 +27,8 @@ import org.whispersystems.signalservice.api.services.CdsiV2Service;
 import org.whispersystems.signalservice.internal.contacts.crypto.Quote;
 import org.whispersystems.signalservice.internal.contacts.crypto.UnauthenticatedQuoteException;
 import org.whispersystems.signalservice.internal.contacts.crypto.UnauthenticatedResponseException;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class RecipientHelper {
 
@@ -180,6 +179,7 @@ public class RecipientHelper {
         return registeredUsers;
     }
 
+    @SuppressWarnings("unused")
     private ACI getRegisteredUserByUsername(String username) throws IOException {
         return dependencies.getAccountManager().getAciByUsername(username);
     }
@@ -190,15 +190,16 @@ public class RecipientHelper {
 
         public RegisteredUser(@JsonProperty("aci") Optional<ACI> aci, @JsonProperty("pni") Optional<PNI> pni) {
             super();
-
-            aci = aci.isPresent() && aci.get().equals(ServiceId.UNKNOWN) ? Optional.empty() : aci;
-            pni = pni.isPresent() && pni.get().equals(ServiceId.UNKNOWN) ? Optional.empty() : pni;
-            if (aci.isEmpty() && pni.isEmpty()) {
+            Optional<PNI> _pni = pni;
+            Optional<ACI> _aci = aci;
+            _aci = _aci.isPresent() && _aci.get().equals(ServiceId.UNKNOWN) ? Optional.empty() : _aci;
+            _pni = _pni.isPresent() && _pni.get().equals(ServiceId.UNKNOWN) ? Optional.empty() : _pni;
+            if (_aci.isEmpty() && _pni.isEmpty()) {
                 throw new AssertionError("Must have either a ACI or PNI!");
             }
 
-            this.aci = aci;
-            this.pni = pni;
+            this.aci = _aci;
+            this.pni = _pni;
         }
 
         public ServiceId getServiceId() {

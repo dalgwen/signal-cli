@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.storage.recipients;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -34,6 +31,8 @@ import org.whispersystems.signalservice.api.push.PNI;
 import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.api.push.SignalServiceAddress;
 import org.whispersystems.signalservice.api.util.UuidUtil;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class RecipientStore
         implements RecipientIdCreator, RecipientResolver, RecipientTrustedResolver, ContactsStore, ProfileStore {
@@ -447,13 +446,15 @@ public class RecipientStore
         logger.debug("Complete recipients migration took {}ms", (System.nanoTime() - start) / 1000000);
     }
 
+    @SuppressWarnings("null")
     long getActualRecipientId(long recipientId) {
+        long _recipientId = recipientId;
         while (recipientsMerged.containsKey(recipientId)) {
             final var newRecipientId = recipientsMerged.get(recipientId);
             logger.debug("Using {} instead of {}, because recipients have been merged", newRecipientId, recipientId);
-            recipientId = newRecipientId;
+            _recipientId = newRecipientId;
         }
-        return recipientId;
+        return _recipientId;
     }
 
     private void storeContact(final Connection connection, final RecipientId recipientId, final Contact contact)
@@ -896,16 +897,19 @@ public class RecipientStore
         private final RecipientId id;
         private final RecipientAddress address;
 
-        public RecipientWithAddress(@JsonProperty("id") RecipientId id, @JsonProperty("address") RecipientAddress address) {
+        public RecipientWithAddress(@JsonProperty("id") RecipientId id,
+                @JsonProperty("address") RecipientAddress address) {
             super();
             this.id = id;
             this.address = address;
         }
 
+        @SuppressWarnings("unused")
         public RecipientId id() {
             return id;
         }
 
+        @SuppressWarnings("unused")
         public RecipientAddress address() {
             return address;
         }

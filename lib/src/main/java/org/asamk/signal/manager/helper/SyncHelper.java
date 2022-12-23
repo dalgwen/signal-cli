@@ -253,6 +253,7 @@ public class SyncHelper {
         }
     }
 
+    @SuppressWarnings("null")
     public void handleSyncDeviceContacts(final InputStream input) throws IOException {
         final var s = new DeviceContactsInputStream(input);
         DeviceContact c;

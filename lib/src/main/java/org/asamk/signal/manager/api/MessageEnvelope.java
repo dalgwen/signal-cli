@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.api;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
@@ -43,11 +40,17 @@ import org.whispersystems.signalservice.api.messages.multidevice.SignalServiceSy
 import org.whispersystems.signalservice.api.messages.multidevice.ViewOnceOpenMessage;
 import org.whispersystems.signalservice.api.messages.multidevice.ViewedMessage;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class MessageEnvelope {
 
-    public MessageEnvelope(@JsonProperty("sourceAddress") Optional<RecipientAddress> sourceAddress, @JsonProperty("sourceDevice") int sourceDevice, @JsonProperty("timestamp") long timestamp,
-            @JsonProperty("serverReceivedTimestamp") long serverReceivedTimestamp, @JsonProperty("serverDeliveredTimestamp") long serverDeliveredTimestamp, @JsonProperty("isUnidentifiedSender") boolean isUnidentifiedSender,
-            @JsonProperty("receipt") Optional<Receipt> receipt, @JsonProperty("typing") Optional<Typing> typing, @JsonProperty("data") Optional<Data> data, @JsonProperty("sync") Optional<Sync> sync,
+    public MessageEnvelope(@JsonProperty("sourceAddress") Optional<RecipientAddress> sourceAddress,
+            @JsonProperty("sourceDevice") int sourceDevice, @JsonProperty("timestamp") long timestamp,
+            @JsonProperty("serverReceivedTimestamp") long serverReceivedTimestamp,
+            @JsonProperty("serverDeliveredTimestamp") long serverDeliveredTimestamp,
+            @JsonProperty("isUnidentifiedSender") boolean isUnidentifiedSender,
+            @JsonProperty("receipt") Optional<Receipt> receipt, @JsonProperty("typing") Optional<Typing> typing,
+            @JsonProperty("data") Optional<Data> data, @JsonProperty("sync") Optional<Sync> sync,
             @JsonProperty("call") Optional<Call> call, @JsonProperty("story") Optional<Story> story) {
         super();
         this.sourceAddress = sourceAddress;
@@ -83,7 +86,8 @@ public class MessageEnvelope {
         private final Type type;
         private final List<Long> timestamps;
 
-        public Receipt(@JsonProperty("when") long when, @JsonProperty("type") Type type, @JsonProperty("timestamps") List<Long> timestamps) {
+        public Receipt(@JsonProperty("when") long when, @JsonProperty("type") Type type,
+                @JsonProperty("timestamps") List<Long> timestamps) {
             super();
             this.when = when;
             this.type = type;
@@ -134,7 +138,8 @@ public class MessageEnvelope {
         private final Type type;
         private final Optional<GroupId> groupId;
 
-        public Typing(@JsonProperty("timestamp") long timestamp, @JsonProperty("type") Type type, @JsonProperty("groupId") Optional<GroupId> groupId) {
+        public Typing(@JsonProperty("timestamp") long timestamp, @JsonProperty("type") Type type,
+                @JsonProperty("groupId") Optional<GroupId> groupId) {
             super();
             this.timestamp = timestamp;
             this.type = type;
@@ -188,12 +193,22 @@ public class MessageEnvelope {
         private final List<Mention> mentions;
         private final List<Preview> previews;
 
-        public Data(@JsonProperty("timestamp") long timestamp, @JsonProperty("groupContext") Optional<GroupContext> groupContext, @JsonProperty("storyContext") Optional<StoryContext> storyContext,
-                @JsonProperty("groupCallUpdate") Optional<GroupCallUpdate> groupCallUpdate, @JsonProperty("body") Optional<String> body, @JsonProperty("expiresInSeconds") int expiresInSeconds,
-                @JsonProperty("isExpirationUpdate") boolean isExpirationUpdate, @JsonProperty("isViewOnce") boolean isViewOnce, @JsonProperty("isEndSession") boolean isEndSession, @JsonProperty("isProfileKeyUpdate") boolean isProfileKeyUpdate,
-                @JsonProperty("hasProfileKey") boolean hasProfileKey, @JsonProperty("reaction") Optional<Reaction> reaction, @JsonProperty("quote") Optional<Quote> quote, @JsonProperty("payment") Optional<Payment> payment,
-                @JsonProperty("attachments") List<Attachment> attachments, @JsonProperty("remoteDeleteId") Optional<Long> remoteDeleteId, @JsonProperty("sticker") Optional<Sticker> sticker,
-                @JsonProperty("sharedContacts") List<SharedContact> sharedContacts, @JsonProperty("mentions") List<Mention> mentions, @JsonProperty("previews") List<Preview> previews) {
+        public Data(@JsonProperty("timestamp") long timestamp,
+                @JsonProperty("groupContext") Optional<GroupContext> groupContext,
+                @JsonProperty("storyContext") Optional<StoryContext> storyContext,
+                @JsonProperty("groupCallUpdate") Optional<GroupCallUpdate> groupCallUpdate,
+                @JsonProperty("body") Optional<String> body, @JsonProperty("expiresInSeconds") int expiresInSeconds,
+                @JsonProperty("isExpirationUpdate") boolean isExpirationUpdate,
+                @JsonProperty("isViewOnce") boolean isViewOnce, @JsonProperty("isEndSession") boolean isEndSession,
+                @JsonProperty("isProfileKeyUpdate") boolean isProfileKeyUpdate,
+                @JsonProperty("hasProfileKey") boolean hasProfileKey,
+                @JsonProperty("reaction") Optional<Reaction> reaction, @JsonProperty("quote") Optional<Quote> quote,
+                @JsonProperty("payment") Optional<Payment> payment,
+                @JsonProperty("attachments") List<Attachment> attachments,
+                @JsonProperty("remoteDeleteId") Optional<Long> remoteDeleteId,
+                @JsonProperty("sticker") Optional<Sticker> sticker,
+                @JsonProperty("sharedContacts") List<SharedContact> sharedContacts,
+                @JsonProperty("mentions") List<Mention> mentions, @JsonProperty("previews") List<Preview> previews) {
             super();
             this.timestamp = timestamp;
             this.groupContext = groupContext;
@@ -254,7 +269,8 @@ public class MessageEnvelope {
             private final boolean isGroupUpdate;
             private final int revision;
 
-            public GroupContext(@JsonProperty("groupId") GroupId groupId, @JsonProperty("isGroupUpdate") boolean isGroupUpdate, @JsonProperty("revision") int revision) {
+            public GroupContext(@JsonProperty("groupId") GroupId groupId,
+                    @JsonProperty("isGroupUpdate") boolean isGroupUpdate, @JsonProperty("revision") int revision) {
                 super();
                 this.groupId = groupId;
                 this.isGroupUpdate = isGroupUpdate;
@@ -291,7 +307,8 @@ public class MessageEnvelope {
             private final RecipientAddress author;
             private final long sentTimestamp;
 
-            public StoryContext(@JsonProperty("author") RecipientAddress author, @JsonProperty("sentTimestamp") long sentTimestamp) {
+            public StoryContext(@JsonProperty("author") RecipientAddress author,
+                    @JsonProperty("sentTimestamp") long sentTimestamp) {
                 super();
                 this.author = author;
                 this.sentTimestamp = sentTimestamp;
@@ -337,7 +354,9 @@ public class MessageEnvelope {
             private final String emoji;
             private final boolean isRemove;
 
-            public Reaction(@JsonProperty("targetSentTimestamp") long targetSentTimestamp, @JsonProperty("targetAuthor") RecipientAddress targetAuthor, @JsonProperty("emoji") String emoji, @JsonProperty("isRemove") boolean isRemove) {
+            public Reaction(@JsonProperty("targetSentTimestamp") long targetSentTimestamp,
+                    @JsonProperty("targetAuthor") RecipientAddress targetAuthor, @JsonProperty("emoji") String emoji,
+                    @JsonProperty("isRemove") boolean isRemove) {
                 super();
                 this.targetSentTimestamp = targetSentTimestamp;
                 this.targetAuthor = targetAuthor;
@@ -378,7 +397,8 @@ public class MessageEnvelope {
             private final List<Mention> mentions;
             private final List<Attachment> attachments;
 
-            public Quote(@JsonProperty("id") long id, @JsonProperty("author") RecipientAddress author, @JsonProperty("text") Optional<String> text, @JsonProperty("mentions") List<Mention> mentions,
+            public Quote(@JsonProperty("id") long id, @JsonProperty("author") RecipientAddress author,
+                    @JsonProperty("text") Optional<String> text, @JsonProperty("mentions") List<Mention> mentions,
                     @JsonProperty("attachments") List<Attachment> attachments) {
                 super();
                 this.id = id;
@@ -454,7 +474,8 @@ public class MessageEnvelope {
             private final int start;
             private final int length;
 
-            public Mention(@JsonProperty("recipient") RecipientAddress recipient, @JsonProperty("start") int start, @JsonProperty("length") int length) {
+            public Mention(@JsonProperty("recipient") RecipientAddress recipient, @JsonProperty("start") int start,
+                    @JsonProperty("length") int length) {
                 super();
                 this.recipient = recipient;
                 this.start = start;
@@ -497,10 +518,15 @@ public class MessageEnvelope {
             private final boolean isGif;
             private final boolean isBorderless;
 
-            public Attachment(@JsonProperty("id") Optional<String> id, @JsonProperty("file") Optional<File> file, @JsonProperty("fileName") Optional<String> fileName, @JsonProperty("contentType") String contentType,
-                    @JsonProperty("uploadTimestamp") Optional<Long> uploadTimestamp, @JsonProperty("size") Optional<Long> size, @JsonProperty("preview") Optional<byte[]> preview,
-                    @JsonProperty("thumbnail") Optional<Attachment> thumbnail, @JsonProperty("caption") Optional<String> caption, @JsonProperty("width") Optional<Integer> width,
-                    @JsonProperty("height") Optional<Integer> height, @JsonProperty("isVoiceNote") boolean isVoiceNote, @JsonProperty("isGif") boolean isGif, @JsonProperty("isBorderless") boolean isBorderless) {
+            public Attachment(@JsonProperty("id") Optional<String> id, @JsonProperty("file") Optional<File> file,
+                    @JsonProperty("fileName") Optional<String> fileName,
+                    @JsonProperty("contentType") String contentType,
+                    @JsonProperty("uploadTimestamp") Optional<Long> uploadTimestamp,
+                    @JsonProperty("size") Optional<Long> size, @JsonProperty("preview") Optional<byte[]> preview,
+                    @JsonProperty("thumbnail") Optional<Attachment> thumbnail,
+                    @JsonProperty("caption") Optional<String> caption, @JsonProperty("width") Optional<Integer> width,
+                    @JsonProperty("height") Optional<Integer> height, @JsonProperty("isVoiceNote") boolean isVoiceNote,
+                    @JsonProperty("isGif") boolean isGif, @JsonProperty("isBorderless") boolean isBorderless) {
                 super();
                 this.id = id;
                 this.file = file;
@@ -518,6 +544,7 @@ public class MessageEnvelope {
                 this.isBorderless = isBorderless;
             }
 
+            @SuppressWarnings("null")
             static Attachment from(SignalServiceAttachment attachment, AttachmentFileProvider fileProvider) {
                 if (attachment.isPointer()) {
                     final var a = attachment.asPointer();
@@ -611,7 +638,8 @@ public class MessageEnvelope {
             private final byte[] packKey;
             private final int stickerId;
 
-            public Sticker(@JsonProperty("packId") StickerPackId packId, @JsonProperty("packKey") byte[] packKey, @JsonProperty("stickerId") int stickerId) {
+            public Sticker(@JsonProperty("packId") StickerPackId packId, @JsonProperty("packKey") byte[] packKey,
+                    @JsonProperty("stickerId") int stickerId) {
                 super();
                 this.packId = packId;
                 this.packKey = packKey;
@@ -644,8 +672,10 @@ public class MessageEnvelope {
             private final List<Address> address;
             private final Optional<String> organization;
 
-            public SharedContact(@JsonProperty("name") Name name, @JsonProperty("avatar") Optional<Avatar> avatar, @JsonProperty("phone") List<Phone> phone, @JsonProperty("email") List<Email> email,
-                    @JsonProperty("address") List<Address> address, @JsonProperty("organization") Optional<String> organization) {
+            public SharedContact(@JsonProperty("name") Name name, @JsonProperty("avatar") Optional<Avatar> avatar,
+                    @JsonProperty("phone") List<Phone> phone, @JsonProperty("email") List<Email> email,
+                    @JsonProperty("address") List<Address> address,
+                    @JsonProperty("organization") Optional<String> organization) {
                 super();
                 this.name = name;
                 this.avatar = avatar;
@@ -676,8 +706,11 @@ public class MessageEnvelope {
                 private final Optional<String> suffix;
                 private final Optional<String> middle;
 
-                public Name(@JsonProperty("display") Optional<String> display, @JsonProperty("given") Optional<String> given, @JsonProperty("family") Optional<String> family,
-                        @JsonProperty("prefix") Optional<String> prefix, @JsonProperty("suffix") Optional<String> suffix, @JsonProperty("middle") Optional<String> middle) {
+                public Name(@JsonProperty("display") Optional<String> display,
+                        @JsonProperty("given") Optional<String> given, @JsonProperty("family") Optional<String> family,
+                        @JsonProperty("prefix") Optional<String> prefix,
+                        @JsonProperty("suffix") Optional<String> suffix,
+                        @JsonProperty("middle") Optional<String> middle) {
                     super();
                     this.display = display;
                     this.given = given;
@@ -722,7 +755,8 @@ public class MessageEnvelope {
                 private final Attachment attachment;
                 private final boolean isProfile;
 
-                public Avatar(@JsonProperty("attachment") Attachment attachment, @JsonProperty("isProfile") boolean isProfile) {
+                public Avatar(@JsonProperty("attachment") Attachment attachment,
+                        @JsonProperty("isProfile") boolean isProfile) {
                     super();
                     this.attachment = attachment;
                     this.isProfile = isProfile;
@@ -747,7 +781,8 @@ public class MessageEnvelope {
                 private final Type type;
                 private final Optional<String> label;
 
-                public Phone(@JsonProperty("value") String value, @JsonProperty("type") Type type, @JsonProperty("label") Optional<String> label) {
+                public Phone(@JsonProperty("value") String value, @JsonProperty("type") Type type,
+                        @JsonProperty("label") Optional<String> label) {
                     super();
                     this.value = value;
                     this.type = type;
@@ -799,7 +834,8 @@ public class MessageEnvelope {
                 private final Type type;
                 private final Optional<String> label;
 
-                public Email(@JsonProperty("value") String value, @JsonProperty("type") Type type, @JsonProperty("label") Optional<String> label) {
+                public Email(@JsonProperty("value") String value, @JsonProperty("type") Type type,
+                        @JsonProperty("label") Optional<String> label) {
                     super();
                     this.value = value;
                     this.type = type;
@@ -856,9 +892,12 @@ public class MessageEnvelope {
                 private final Optional<String> postcode;
                 private final Optional<String> country;
 
-                public Address(@JsonProperty("type") Type type, @JsonProperty("label") Optional<String> label, @JsonProperty("street") Optional<String> street, @JsonProperty("pobox") Optional<String> pobox,
-                        @JsonProperty("neighborhood") Optional<String> neighborhood, @JsonProperty("city") Optional<String> city, @JsonProperty("region") Optional<String> region,
-                        @JsonProperty("postcode") Optional<String> postcode, @JsonProperty("country") Optional<String> country) {
+                public Address(@JsonProperty("type") Type type, @JsonProperty("label") Optional<String> label,
+                        @JsonProperty("street") Optional<String> street, @JsonProperty("pobox") Optional<String> pobox,
+                        @JsonProperty("neighborhood") Optional<String> neighborhood,
+                        @JsonProperty("city") Optional<String> city, @JsonProperty("region") Optional<String> region,
+                        @JsonProperty("postcode") Optional<String> postcode,
+                        @JsonProperty("country") Optional<String> country) {
                     super();
                     this.type = type;
                     this.label = label;
@@ -967,7 +1006,9 @@ public class MessageEnvelope {
             private final String url;
             private final Optional<Attachment> image;
 
-            public Preview(@JsonProperty("title") String title, @JsonProperty("description") String description, @JsonProperty("date") long date, @JsonProperty("url") String url, @JsonProperty("image") Optional<Attachment> image) {
+            public Preview(@JsonProperty("title") String title, @JsonProperty("description") String description,
+                    @JsonProperty("date") long date, @JsonProperty("url") String url,
+                    @JsonProperty("image") Optional<Attachment> image) {
                 super();
                 this.title = title;
                 this.description = description;
@@ -1093,8 +1134,10 @@ public class MessageEnvelope {
         private final Optional<Groups> groups;
         private final Optional<MessageRequestResponse> messageRequestResponse;
 
-        public Sync(@JsonProperty("sent") Optional<Sent> sent, @JsonProperty("blocked") Optional<Blocked> blocked, @JsonProperty("read") List<Read> read, @JsonProperty("viewed") List<Viewed> viewed,
-                @JsonProperty("viewOnceOpen") Optional<ViewOnceOpen> viewOnceOpen, @JsonProperty("contacts") Optional<Contacts> contacts, @JsonProperty("groups") Optional<Groups> groups,
+        public Sync(@JsonProperty("sent") Optional<Sent> sent, @JsonProperty("blocked") Optional<Blocked> blocked,
+                @JsonProperty("read") List<Read> read, @JsonProperty("viewed") List<Viewed> viewed,
+                @JsonProperty("viewOnceOpen") Optional<ViewOnceOpen> viewOnceOpen,
+                @JsonProperty("contacts") Optional<Contacts> contacts, @JsonProperty("groups") Optional<Groups> groups,
                 @JsonProperty("messageRequestResponse") Optional<MessageRequestResponse> messageRequestResponse) {
             super();
             this.sent = sent;
@@ -1134,8 +1177,11 @@ public class MessageEnvelope {
             private final Optional<Data> message;
             private final Optional<Story> story;
 
-            public Sent(@JsonProperty("timestamp") long timestamp, @JsonProperty("expirationStartTimestamp") long expirationStartTimestamp, @JsonProperty("destination") Optional<RecipientAddress> destination,
-                    @JsonProperty("recipients") Set<RecipientAddress> recipients, @JsonProperty("message") Optional<Data> message, @JsonProperty("story") Optional<Story> story) {
+            public Sent(@JsonProperty("timestamp") long timestamp,
+                    @JsonProperty("expirationStartTimestamp") long expirationStartTimestamp,
+                    @JsonProperty("destination") Optional<RecipientAddress> destination,
+                    @JsonProperty("recipients") Set<RecipientAddress> recipients,
+                    @JsonProperty("message") Optional<Data> message, @JsonProperty("story") Optional<Story> story) {
                 super();
                 this.timestamp = timestamp;
                 this.expirationStartTimestamp = expirationStartTimestamp;
@@ -1190,7 +1236,8 @@ public class MessageEnvelope {
             private final List<RecipientAddress> recipients;
             private final List<GroupId> groupIds;
 
-            public Blocked(@JsonProperty("recipients") List<RecipientAddress> recipients, @JsonProperty("groupIds") List<GroupId> groupIds) {
+            public Blocked(@JsonProperty("recipients") List<RecipientAddress> recipients,
+                    @JsonProperty("groupIds") List<GroupId> groupIds) {
                 super();
                 this.recipients = recipients;
                 this.groupIds = groupIds;
@@ -1274,7 +1321,8 @@ public class MessageEnvelope {
             private final RecipientAddress sender;
             private final long timestamp;
 
-            public ViewOnceOpen(@JsonProperty("sender") RecipientAddress sender, @JsonProperty("timestamp") long timestamp) {
+            public ViewOnceOpen(@JsonProperty("sender") RecipientAddress sender,
+                    @JsonProperty("timestamp") long timestamp) {
                 super();
                 this.sender = sender;
                 this.timestamp = timestamp;
@@ -1325,7 +1373,9 @@ public class MessageEnvelope {
             private final Optional<GroupId> groupId;
             private final Optional<RecipientAddress> person;
 
-            public MessageRequestResponse(@JsonProperty("type") Type type, @JsonProperty("groupId") Optional<GroupId> groupId, @JsonProperty("person") Optional<RecipientAddress> person) {
+            public MessageRequestResponse(@JsonProperty("type") Type type,
+                    @JsonProperty("groupId") Optional<GroupId> groupId,
+                    @JsonProperty("person") Optional<RecipientAddress> person) {
                 super();
                 this.type = type;
                 this.groupId = groupId;
@@ -1425,8 +1475,10 @@ public class MessageEnvelope {
         private final List<IceUpdate> iceUpdate;
         private final Optional<Opaque> opaque;
 
-        public Call(@JsonProperty("destinationDeviceId") Optional<Integer> destinationDeviceId, @JsonProperty("groupId") Optional<GroupId> groupId, @JsonProperty("timestamp") Optional<Long> timestamp,
-                @JsonProperty("offer") Optional<Offer> offer, @JsonProperty("answer") Optional<Answer> answer, @JsonProperty("hangup") Optional<Hangup> hangup, @JsonProperty("busy") Optional<Busy> busy,
+        public Call(@JsonProperty("destinationDeviceId") Optional<Integer> destinationDeviceId,
+                @JsonProperty("groupId") Optional<GroupId> groupId, @JsonProperty("timestamp") Optional<Long> timestamp,
+                @JsonProperty("offer") Optional<Offer> offer, @JsonProperty("answer") Optional<Answer> answer,
+                @JsonProperty("hangup") Optional<Hangup> hangup, @JsonProperty("busy") Optional<Busy> busy,
                 @JsonProperty("iceUpdate") List<IceUpdate> iceUpdate, @JsonProperty("opaque") Optional<Opaque> opaque) {
             super();
             this.destinationDeviceId = destinationDeviceId;
@@ -1457,7 +1509,8 @@ public class MessageEnvelope {
             private final Type type;
             private final byte[] opaque;
 
-            public Offer(@JsonProperty("id") long id, @JsonProperty("sdp") String sdp, @JsonProperty("type") Type type, @JsonProperty("opaque") byte[] opaque) {
+            public Offer(@JsonProperty("id") long id, @JsonProperty("sdp") String sdp, @JsonProperty("type") Type type,
+                    @JsonProperty("opaque") byte[] opaque) {
                 super();
                 this.id = id;
                 this.sdp = sdp;
@@ -1508,7 +1561,8 @@ public class MessageEnvelope {
             private final String sdp;
             private final byte[] opaque;
 
-            public Answer(@JsonProperty("id") long id, @JsonProperty("sdp") String sdp, @JsonProperty("opaque") byte[] opaque) {
+            public Answer(@JsonProperty("id") long id, @JsonProperty("sdp") String sdp,
+                    @JsonProperty("opaque") byte[] opaque) {
                 super();
                 this.id = id;
                 this.sdp = sdp;
@@ -1555,7 +1609,8 @@ public class MessageEnvelope {
             private final int deviceId;
             private final boolean isLegacy;
 
-            public Hangup(@JsonProperty("id") long id, @JsonProperty("type") Type type, @JsonProperty("deviceId") int deviceId, @JsonProperty("isLegacy") boolean isLegacy) {
+            public Hangup(@JsonProperty("id") long id, @JsonProperty("type") Type type,
+                    @JsonProperty("deviceId") int deviceId, @JsonProperty("isLegacy") boolean isLegacy) {
                 super();
                 this.id = id;
                 this.type = type;
@@ -1615,7 +1670,8 @@ public class MessageEnvelope {
             private final String sdp;
             private final byte[] opaque;
 
-            public IceUpdate(@JsonProperty("id") long id, @JsonProperty("sdp") String sdp, @JsonProperty("opaque") byte[] opaque) {
+            public IceUpdate(@JsonProperty("id") long id, @JsonProperty("sdp") String sdp,
+                    @JsonProperty("opaque") byte[] opaque) {
                 super();
                 this.id = id;
                 this.sdp = sdp;
@@ -1720,7 +1776,9 @@ public class MessageEnvelope {
         private final Optional<Data.Attachment> fileAttachment;
         private final Optional<TextAttachment> textAttachment;
 
-        public Story(@JsonProperty("allowsReplies") boolean allowsReplies, @JsonProperty("groupId") Optional<GroupId> groupId, @JsonProperty("fileAttachment") Optional<Attachment> fileAttachment,
+        public Story(@JsonProperty("allowsReplies") boolean allowsReplies,
+                @JsonProperty("groupId") Optional<GroupId> groupId,
+                @JsonProperty("fileAttachment") Optional<Attachment> fileAttachment,
                 @JsonProperty("textAttachment") Optional<TextAttachment> textAttachment) {
             super();
             this.allowsReplies = allowsReplies;
@@ -1745,9 +1803,13 @@ public class MessageEnvelope {
             private final Optional<Gradient> backgroundGradient;
             private final Optional<Color> backgroundColor;
 
-            public TextAttachment(@JsonProperty("text") Optional<String> text, @JsonProperty("style") Optional<Style> style, @JsonProperty("textForegroundColor") Optional<Color> textForegroundColor,
-                    @JsonProperty("textBackgroundColor") Optional<Color> textBackgroundColor, @JsonProperty("preview") Optional<Data.Preview> preview,
-                    @JsonProperty("backgroundGradient") Optional<Gradient> backgroundGradient, @JsonProperty("backgroundColor") Optional<Color> backgroundColor) {
+            public TextAttachment(@JsonProperty("text") Optional<String> text,
+                    @JsonProperty("style") Optional<Style> style,
+                    @JsonProperty("textForegroundColor") Optional<Color> textForegroundColor,
+                    @JsonProperty("textBackgroundColor") Optional<Color> textBackgroundColor,
+                    @JsonProperty("preview") Optional<Data.Preview> preview,
+                    @JsonProperty("backgroundGradient") Optional<Gradient> backgroundGradient,
+                    @JsonProperty("backgroundColor") Optional<Color> backgroundColor) {
                 super();
                 this.text = text;
                 this.style = style;
@@ -1801,7 +1863,9 @@ public class MessageEnvelope {
                 private final List<Float> positions;
                 private final Optional<Integer> angle;
 
-                public Gradient(@JsonProperty("colors") List<Color> colors, @JsonProperty("positions") List<Float> positions, @JsonProperty("angle") Optional<Integer> angle) {
+                public Gradient(@JsonProperty("colors") List<Color> colors,
+                        @JsonProperty("positions") List<Float> positions,
+                        @JsonProperty("angle") Optional<Integer> angle) {
                     super();
                     this.colors = colors;
                     this.positions = positions;

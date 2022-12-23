@@ -268,6 +268,7 @@ public class StorageHelper {
                 accountRecord.getFamilyName().orElse(null), null, null, null, null);
     }
 
+    @SuppressWarnings("unused")
     private SignalStorageRecord getSignalStorageRecord(final StorageId accountId) throws IOException {
         List<SignalStorageRecord> records;
         try {

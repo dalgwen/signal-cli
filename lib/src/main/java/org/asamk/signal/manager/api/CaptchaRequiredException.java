@@ -1,5 +1,6 @@
 package org.asamk.signal.manager.api;
 
+@SuppressWarnings("serial")
 public class CaptchaRequiredException extends Exception {
 
     public CaptchaRequiredException(final String message) {

@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.storage.sendLog;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -25,6 +22,8 @@ import org.whispersystems.signalservice.api.crypto.ContentHint;
 import org.whispersystems.signalservice.api.messages.SendMessageResult;
 import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.internal.push.SignalServiceProtos;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class MessageSendLogStore implements AutoCloseable {
 
@@ -358,16 +357,19 @@ public class MessageSendLogStore implements AutoCloseable {
         private final ServiceId serviceId;
         private final List<Integer> deviceIds;
 
-        public RecipientDevices(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("deviceIds") List<Integer> deviceIds) {
+        public RecipientDevices(@JsonProperty("serviceId") ServiceId serviceId,
+                @JsonProperty("deviceIds") List<Integer> deviceIds) {
             super();
             this.serviceId = serviceId;
             this.deviceIds = deviceIds;
         }
 
+        @SuppressWarnings("unused")
         public ServiceId serviceId() {
             return serviceId;
         }
 
+        @SuppressWarnings("unused")
         public List<Integer> deviceIds() {
             return deviceIds;
         }

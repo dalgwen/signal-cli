@@ -246,6 +246,7 @@ public class AccountsStore {
     }
 
     private static Pair<FileChannel, FileLock> openFileChannel(File fileName) throws IOException {
+        @SuppressWarnings("resource")
         var fileChannel = new RandomAccessFile(fileName, "rw").getChannel();
         var lock = fileChannel.tryLock();
         if (lock == null) {

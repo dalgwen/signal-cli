@@ -47,6 +47,7 @@ public class Utils {
         return mime;
     }
 
+    @SuppressWarnings("null")
     public static Pair<StreamDetails, Optional<String>> createStreamDetailsFromDataURI(final String dataURI) {
         final DataURI uri = DataURI.of(dataURI);
 
@@ -61,6 +62,7 @@ public class Utils {
         return new StreamDetails(stream, mime, size);
     }
 
+    @SuppressWarnings("null")
     public static Pair<StreamDetails, Optional<String>> createStreamDetails(final String value) throws IOException {
         try {
             return createStreamDetailsFromDataURI(value);
@@ -97,10 +99,6 @@ public class Utils {
 
     public static Locale getDefaultLocale(Locale fallback) {
         final var locale = Locale.getDefault();
-        if (locale == null) {
-            logger.debug("No default locale found, using fallback: {}", fallback);
-            return fallback;
-        }
         final var localeString = locale.getLanguage() + "-" + locale.getCountry();
         try {
             Locale.LanguageRange.parse(localeString);

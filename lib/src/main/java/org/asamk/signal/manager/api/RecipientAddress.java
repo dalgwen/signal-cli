@@ -1,13 +1,12 @@
 package org.asamk.signal.manager.api;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Optional;
 import java.util.UUID;
 
 import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.api.push.SignalServiceAddress;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class RecipientAddress {
     private final Optional<UUID> uuid;
@@ -15,15 +14,17 @@ public class RecipientAddress {
 
     public static final UUID UNKNOWN_UUID = ServiceId.UNKNOWN.uuid();
 
-    public RecipientAddress(@JsonProperty("uuid") Optional<UUID> uuid, @JsonProperty("number") Optional<String> number) {
+    public RecipientAddress(@JsonProperty("uuid") Optional<UUID> uuid,
+            @JsonProperty("number") Optional<String> number) {
         super();
+        Optional<UUID> _uuid = uuid;
 
-        uuid = uuid.isPresent() && uuid.get().equals(UNKNOWN_UUID) ? Optional.empty() : uuid;
-        if (uuid.isEmpty() && number.isEmpty()) {
+        _uuid = _uuid.isPresent() && _uuid.get().equals(UNKNOWN_UUID) ? Optional.empty() : _uuid;
+        if (_uuid.isEmpty() && number.isEmpty()) {
             throw new AssertionError("Must have either a UUID or E164 number!");
         }
 
-        this.uuid = uuid;
+        this.uuid = _uuid;
         this.number = number;
     }
 

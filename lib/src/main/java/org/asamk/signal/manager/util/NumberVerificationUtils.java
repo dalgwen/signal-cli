@@ -1,5 +1,8 @@
 package org.asamk.signal.manager.util;
 
+import java.io.IOException;
+import java.util.Optional;
+
 import org.asamk.signal.manager.api.CaptchaRequiredException;
 import org.asamk.signal.manager.api.IncorrectPinException;
 import org.asamk.signal.manager.api.NonNormalizedPhoneNumberException;
@@ -14,26 +17,19 @@ import org.whispersystems.signalservice.internal.push.LockedException;
 import org.whispersystems.signalservice.internal.push.RequestVerificationCodeResponse;
 import org.whispersystems.signalservice.internal.push.VerifyAccountResponse;
 
-import java.io.IOException;
-import java.util.Optional;
-
 public class NumberVerificationUtils {
 
-    public static void requestVerificationCode(
-            SignalServiceAccountManager accountManager, String captcha, boolean voiceVerification
-    ) throws IOException, CaptchaRequiredException, NonNormalizedPhoneNumberException {
-        captcha = captcha == null ? null : captcha.replace("signalcaptcha://", "");
+    @SuppressWarnings("null")
+    public static void requestVerificationCode(SignalServiceAccountManager accountManager, String captcha,
+            boolean voiceVerification) throws IOException, CaptchaRequiredException, NonNormalizedPhoneNumberException {
+        String _captcha = captcha == null ? null : captcha.replace("signalcaptcha://", "");
 
         final ServiceResponse<RequestVerificationCodeResponse> response;
         if (voiceVerification) {
             response = accountManager.requestVoiceVerificationCode(Utils.getDefaultLocale(null),
-                    Optional.ofNullable(captcha),
-                    Optional.empty(),
-                    Optional.empty());
+                    Optional.ofNullable(_captcha), Optional.empty(), Optional.empty());
         } else {
-            response = accountManager.requestSmsVerificationCode(false,
-                    Optional.ofNullable(captcha),
-                    Optional.empty(),
+            response = accountManager.requestSmsVerificationCode(false, Optional.ofNullable(_captcha), Optional.empty(),
                     Optional.empty());
         }
         try {
@@ -41,19 +37,16 @@ public class NumberVerificationUtils {
         } catch (org.whispersystems.signalservice.api.push.exceptions.CaptchaRequiredException e) {
             throw new CaptchaRequiredException(e.getMessage(), e);
         } catch (org.whispersystems.signalservice.api.push.exceptions.NonNormalizedPhoneNumberException e) {
-            throw new NonNormalizedPhoneNumberException("Phone number is not normalized ("
-                    + e.getMessage()
-                    + "). Expected normalized: "
-                    + e.getNormalizedNumber(), e);
+            throw new NonNormalizedPhoneNumberException("Phone number is not normalized (" + e.getMessage()
+                    + "). Expected normalized: " + e.getNormalizedNumber(), e);
         }
     }
 
-    public static Pair<VerifyAccountResponse, MasterKey> verifyNumber(
-            String verificationCode, String pin, PinHelper pinHelper, Verifier verifier
-    ) throws IOException, PinLockedException, IncorrectPinException {
-        verificationCode = verificationCode.replace("-", "");
+    public static Pair<VerifyAccountResponse, MasterKey> verifyNumber(String verificationCode, String pin,
+            PinHelper pinHelper, Verifier verifier) throws IOException, PinLockedException, IncorrectPinException {
+        String _verificationCode = verificationCode.replace("-", "");
         try {
-            final var response = verifyAccountWithCode(verificationCode, null, verifier);
+            final var response = verifyAccountWithCode(_verificationCode, null, verifier);
 
             return new Pair<>(response, null);
         } catch (LockedException e) {
@@ -70,7 +63,7 @@ public class NumberVerificationUtils {
             var registrationLock = registrationLockData.getMasterKey().deriveRegistrationLock();
             VerifyAccountResponse response;
             try {
-                response = verifyAccountWithCode(verificationCode, registrationLock, verifier);
+                response = verifyAccountWithCode(_verificationCode, registrationLock, verifier);
             } catch (LockedException _e) {
                 throw new AssertionError("KBS Pin appeared to matched but reg lock still failed!");
             }
@@ -79,9 +72,8 @@ public class NumberVerificationUtils {
         }
     }
 
-    private static VerifyAccountResponse verifyAccountWithCode(
-            final String verificationCode, final String registrationLock, final Verifier verifier
-    ) throws IOException {
+    private static VerifyAccountResponse verifyAccountWithCode(final String verificationCode,
+            final String registrationLock, final Verifier verifier) throws IOException {
         final var response = verifier.verify(verificationCode, registrationLock);
         handleResponseException(response);
         return response.getResult().get();
@@ -100,8 +92,6 @@ public class NumberVerificationUtils {
 
     public interface Verifier {
 
-        ServiceResponse<VerifyAccountResponse> verify(
-                String verificationCode, String registrationLock
-        );
+        ServiceResponse<VerifyAccountResponse> verify(String verificationCode, String registrationLock);
     }
 }

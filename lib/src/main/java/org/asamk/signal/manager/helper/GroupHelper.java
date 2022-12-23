@@ -162,20 +162,21 @@ public class GroupHelper {
 
     public Pair<GroupId, SendGroupMessageResults> createGroup(String name, Set<RecipientId> members, File avatarFile)
             throws IOException, AttachmentInvalidException {
+        Set<RecipientId> _members = members;
         final var selfRecipientId = account.getSelfRecipientId();
-        if (members != null && members.contains(selfRecipientId)) {
-            members = new HashSet<>(members);
-            members.remove(selfRecipientId);
+        if (_members != null && _members.contains(selfRecipientId)) {
+            _members = new HashSet<>(_members);
+            _members.remove(selfRecipientId);
         }
 
         var gv2Pair = context.getGroupV2Helper().createGroup(name == null ? "" : name,
-                members == null ? Set.of() : members, avatarFile);
+                _members == null ? Set.of() : _members, avatarFile);
 
         if (gv2Pair == null) {
             // Failed to create v2 group, creating v1 group instead
             var gv1 = new GroupInfoV1(GroupIdV1.createRandom());
             gv1.addMembers(List.of(selfRecipientId));
-            final var result = updateGroupV1(gv1, name, members, avatarFile);
+            final var result = updateGroupV1(gv1, name, _members, avatarFile);
             return new Pair<>(gv1.getGroupId(), result);
         }
 

@@ -1,5 +1,6 @@
 package org.asamk.signal.manager.api;
 
+@SuppressWarnings("serial")
 public class InvalidStickerException extends Exception {
 
     public InvalidStickerException(final String message) {

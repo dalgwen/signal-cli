@@ -119,6 +119,8 @@ public final class GroupInviteLinkUrl {
 
     public final static class InvalidGroupLinkException extends Exception {
 
+        private static final long serialVersionUID = -12791937886020006L;
+
         public InvalidGroupLinkException(String message) {
             super(message);
         }
@@ -128,6 +130,7 @@ public final class GroupInviteLinkUrl {
         }
     }
 
+    @SuppressWarnings("serial")
     public final static class UnknownGroupLinkVersionException extends Exception {
 
         public UnknownGroupLinkVersionException(String message) {

@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.storage.groups;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -28,6 +25,7 @@ import org.whispersystems.signalservice.api.push.ServiceId;
 import org.whispersystems.signalservice.internal.util.Hex;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
@@ -133,8 +131,12 @@ public class LegacyGroupStore {
             @JsonDeserialize(using = MembersDeserializer.class)
             List<Member> members;
 
-            public GroupV1(@JsonProperty("groupId") String groupId, @JsonProperty("expectedV2Id") String expectedV2Id, @JsonProperty("name") String name, @JsonProperty("color") String color, @JsonProperty("messageExpirationTime") int messageExpirationTime,
-                    @JsonProperty("blocked") boolean blocked, @JsonProperty("archived") boolean archived, @JsonProperty("members") List<Member> members) {
+            @SuppressWarnings("unused")
+            public GroupV1(@JsonProperty("groupId") String groupId, @JsonProperty("expectedV2Id") String expectedV2Id,
+                    @JsonProperty("name") String name, @JsonProperty("color") String color,
+                    @JsonProperty("messageExpirationTime") int messageExpirationTime,
+                    @JsonProperty("blocked") boolean blocked, @JsonProperty("archived") boolean archived,
+                    @JsonProperty("members") List<Member> members) {
                 super();
                 this.groupId = groupId;
                 this.expectedV2Id = expectedV2Id;
@@ -151,21 +153,25 @@ public class LegacyGroupStore {
                 private final String uuid;
                 private final String number;
 
-                public Member(@JsonProperty("recipientId") Long recipientId, @JsonProperty("uuid") String uuid, @JsonProperty("number") String number) {
+                public Member(@JsonProperty("recipientId") Long recipientId, @JsonProperty("uuid") String uuid,
+                        @JsonProperty("number") String number) {
                     super();
                     this.recipientId = recipientId;
                     this.uuid = uuid;
                     this.number = number;
                 }
 
+                @SuppressWarnings("unused")
                 public Long recipientId() {
                     return recipientId;
                 }
 
+                @SuppressWarnings("unused")
                 public String uuid() {
                     return uuid;
                 }
 
+                @SuppressWarnings("unused")
                 public String number() {
                     return number;
                 }
@@ -176,16 +182,19 @@ public class LegacyGroupStore {
                 private final String uuid;
                 private final String number;
 
+                @SuppressWarnings("unused")
                 public JsonRecipientAddress(@JsonProperty("uuid") String uuid, @JsonProperty("number") String number) {
                     super();
                     this.uuid = uuid;
                     this.number = number;
                 }
 
+                @SuppressWarnings("unused")
                 public String uuid() {
                     return uuid;
                 }
 
+                @SuppressWarnings("unused")
                 public String number() {
                     return number;
                 }
@@ -214,38 +223,47 @@ public class LegacyGroupStore {
                 }
             }
 
+            @SuppressWarnings("unused")
             public List<Member> getMembers() {
                 return members;
             }
 
+            @SuppressWarnings("unused")
             public void setMembers(List<Member> members) {
                 this.members = members;
             }
 
+            @SuppressWarnings("unused")
             public String groupId() {
                 return groupId;
             }
 
+            @SuppressWarnings("unused")
             public String expectedV2Id() {
                 return expectedV2Id;
             }
 
+            @SuppressWarnings("unused")
             public String name() {
                 return name;
             }
 
+            @SuppressWarnings("unused")
             public String color() {
                 return color;
             }
 
+            @SuppressWarnings("unused")
             public int messageExpirationTime() {
                 return messageExpirationTime;
             }
 
+            @SuppressWarnings("unused")
             public boolean blocked() {
                 return blocked;
             }
 
+            @SuppressWarnings("unused")
             public boolean archived() {
                 return archived;
             }
@@ -264,7 +282,8 @@ public class LegacyGroupStore {
             @JsonInclude(JsonInclude.Include.NON_DEFAULT)
             boolean permissionDenied;
 
-            public GroupV2(@JsonProperty("groupId") String groupId, @JsonProperty("masterKey") String masterKey, @JsonProperty("distributionId") String distributionId, @JsonProperty("blocked") boolean blocked,
+            public GroupV2(@JsonProperty("groupId") String groupId, @JsonProperty("masterKey") String masterKey,
+                    @JsonProperty("distributionId") String distributionId, @JsonProperty("blocked") boolean blocked,
                     @JsonProperty("permissionDenied") boolean permissionDenied) {
                 super();
                 this.groupId = groupId;

@@ -20,6 +20,7 @@ public class StickerHelper {
     private final static Logger logger = LoggerFactory.getLogger(StickerHelper.class);
 
     private final Context context;
+    @SuppressWarnings("unused")
     private final SignalAccount account;
     private final SignalDependencies dependencies;
 

@@ -182,6 +182,7 @@ class ManagerImpl implements Manager {
         context.getAccountHelper().checkAccountState();
     }
 
+    @SuppressWarnings("null")
     @Override
     public Map<String, UserStatus> getUserStatus(Set<String> numbers) throws IOException {
         final var canonicalizedNumbers = numbers.stream().collect(Collectors.toMap(n -> n, n -> {
@@ -273,9 +274,10 @@ class ManagerImpl implements Manager {
 
     @Override
     public void submitRateLimitRecaptchaChallenge(String challenge, String captcha) throws IOException {
-        captcha = captcha == null ? null : captcha.replace("signalcaptcha://", "");
+        String _captcha = captcha;
+        _captcha = _captcha == null ? null : _captcha.replace("signalcaptcha://", "");
 
-        dependencies.getAccountManager().submitRateLimitRecaptchaChallenge(challenge, captcha);
+        dependencies.getAccountManager().submitRateLimitRecaptchaChallenge(challenge, _captcha);
     }
 
     @Override

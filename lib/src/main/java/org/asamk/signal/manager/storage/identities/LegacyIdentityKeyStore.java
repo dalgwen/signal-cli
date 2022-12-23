@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.storage.identities;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -24,6 +21,7 @@ import org.signal.libsignal.protocol.InvalidKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class LegacyIdentityKeyStore {
@@ -107,21 +105,26 @@ public class LegacyIdentityKeyStore {
         private final int trustLevel;
         private final long addedTimestamp;
 
-        public IdentityStorage(@JsonProperty("identityKey") String identityKey, @JsonProperty("trustLevel") int trustLevel, @JsonProperty("addedTimestamp") long addedTimestamp) {
+        @SuppressWarnings("unused")
+        public IdentityStorage(@JsonProperty("identityKey") String identityKey,
+                @JsonProperty("trustLevel") int trustLevel, @JsonProperty("addedTimestamp") long addedTimestamp) {
             super();
             this.identityKey = identityKey;
             this.trustLevel = trustLevel;
             this.addedTimestamp = addedTimestamp;
         }
 
+        @SuppressWarnings("unused")
         public String identityKey() {
             return identityKey;
         }
 
+        @SuppressWarnings("unused")
         public int trustLevel() {
             return trustLevel;
         }
 
+        @SuppressWarnings("unused")
         public long addedTimestamp() {
             return addedTimestamp;
         }

@@ -210,12 +210,13 @@ public class GroupStore {
 
     private void insertOrReplaceGroup(final Connection connection, Long internalId, final GroupInfo group)
             throws SQLException {
+        Long _internalId = internalId;
         if (group instanceof GroupInfoV1) {
             GroupInfoV1 groupV1 = (GroupInfoV1) group;
-            if (internalId != null) {
+            if (_internalId != null) {
                 final var sqlDeleteMembers = String.format("DELETE FROM %s where group_id = ?", TABLE_GROUP_V1_MEMBER);
                 try (final var statement = connection.prepareStatement(sqlDeleteMembers)) {
-                    statement.setLong(1, internalId);
+                    statement.setLong(1, _internalId);
                     statement.executeUpdate();
                 }
             }
@@ -224,10 +225,10 @@ public class GroupStore {
                             + "                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n",
                     TABLE_GROUP_V1);
             try (final var statement = connection.prepareStatement(sql)) {
-                if (internalId == null) {
+                if (_internalId == null) {
                     statement.setNull(1, Types.NUMERIC);
                 } else {
-                    statement.setLong(1, internalId);
+                    statement.setLong(1, _internalId);
                 }
                 statement.setBytes(2, groupV1.getGroupId().serialize());
                 statement.setBytes(3, groupV1.getExpectedV2Id().serialize());
@@ -238,10 +239,10 @@ public class GroupStore {
                 statement.setBoolean(8, groupV1.archived);
                 statement.executeUpdate();
 
-                if (internalId == null) {
+                if (_internalId == null) {
                     final var generatedKeys = statement.getGeneratedKeys();
                     if (generatedKeys.next()) {
-                        internalId = generatedKeys.getLong(1);
+                        _internalId = generatedKeys.getLong(1);
                     } else {
                         throw new RuntimeException("Failed to add new recipient to database");
                     }
@@ -252,7 +253,7 @@ public class GroupStore {
                             + "                    VALUES (?, ?)\n", TABLE_GROUP_V1_MEMBER);
             try (final var statement = connection.prepareStatement(sqlInsertMember)) {
                 for (final var recipient : groupV1.getMembers()) {
-                    statement.setLong(1, internalId);
+                    statement.setLong(1, _internalId);
                     statement.setLong(2, recipient.id);
                     statement.executeUpdate();
                 }
@@ -264,10 +265,10 @@ public class GroupStore {
                             + "                    VALUES (?, ?, ?, ?, ?, ?, ?)\n",
                     TABLE_GROUP_V2);
             try (final var statement = connection.prepareStatement(sql)) {
-                if (internalId == null) {
+                if (_internalId == null) {
                     statement.setNull(1, Types.NUMERIC);
                 } else {
-                    statement.setLong(1, internalId);
+                    statement.setLong(1, _internalId);
                 }
                 statement.setBytes(2, groupV2.getGroupId().serialize());
                 statement.setBytes(3, groupV2.getMasterKey().serialize());

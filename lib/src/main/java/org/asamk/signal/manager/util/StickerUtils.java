@@ -95,6 +95,7 @@ public class StickerUtils {
         return new ObjectMapper().readValue(inputStream, JsonStickerPack.class);
     }
 
+    @SuppressWarnings("null")
     private static Pair<InputStream, Long> getInputStreamAndLength(final String rootPath, final ZipFile zip,
             final String subfile) throws IOException {
         if (zip != null) {

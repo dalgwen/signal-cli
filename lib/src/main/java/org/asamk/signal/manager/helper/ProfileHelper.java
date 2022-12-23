@@ -261,6 +261,7 @@ public final class ProfileHelper {
         }
     }
 
+    @SuppressWarnings("null")
     private ProfileAndCredential blockingGetProfile(Single<ProfileAndCredential> profile) throws IOException {
         try {
             return profile.blockingGet();

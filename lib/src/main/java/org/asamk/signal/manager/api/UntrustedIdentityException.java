@@ -1,5 +1,6 @@
 package org.asamk.signal.manager.api;
 
+@SuppressWarnings("serial")
 public class UntrustedIdentityException extends Exception {
 
     private final RecipientAddress sender;

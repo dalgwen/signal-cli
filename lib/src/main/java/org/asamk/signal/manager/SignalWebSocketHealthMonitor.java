@@ -57,6 +57,7 @@ final class SignalWebSocketHealthMonitor implements HealthMonitor {
                 .subscribe(s -> onStateChange(s, unidentified));
     }
 
+    @SuppressWarnings("incomplete-switch")
     private synchronized void onStateChange(WebSocketConnectionState connectionState, HealthState healthState) {
         switch (connectionState) {
             case CONNECTED:

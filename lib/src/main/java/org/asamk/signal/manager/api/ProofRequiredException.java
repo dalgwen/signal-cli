@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 /**
  * Thrown when rate-limited by the server and proof of humanity is required to continue messaging.
  */
+@SuppressWarnings("serial")
 public class ProofRequiredException extends Exception {
 
     private final String token;

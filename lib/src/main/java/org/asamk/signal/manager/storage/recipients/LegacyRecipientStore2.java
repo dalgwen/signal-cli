@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.storage.recipients;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -22,6 +19,8 @@ import org.signal.libsignal.zkgroup.profiles.ProfileKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.push.ServiceId;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class LegacyRecipientStore2 {
 
@@ -94,6 +93,7 @@ public class LegacyRecipientStore2 {
         private final List<Recipient> recipients;
         private final long lastId;
 
+        @SuppressWarnings("unused")
         public Storage(@JsonProperty("recipients") List<Recipient> recipients, @JsonProperty("lastId") long lastId) {
             super();
             this.recipients = recipients;
@@ -109,8 +109,11 @@ public class LegacyRecipientStore2 {
             private final Contact contact;
             private final Profile profile;
 
-            public Recipient(@JsonProperty("id") long id, @JsonProperty("number") String number, @JsonProperty("uuid") String uuid, @JsonProperty("profileKey") String profileKey,
-                    @JsonProperty("expiringProfileKeyCredential") String expiringProfileKeyCredential, @JsonProperty("contact") Contact contact, @JsonProperty("profile") Profile profile) {
+            @SuppressWarnings("unused")
+            public Recipient(@JsonProperty("id") long id, @JsonProperty("number") String number,
+                    @JsonProperty("uuid") String uuid, @JsonProperty("profileKey") String profileKey,
+                    @JsonProperty("expiringProfileKeyCredential") String expiringProfileKeyCredential,
+                    @JsonProperty("contact") Contact contact, @JsonProperty("profile") Profile profile) {
                 super();
                 this.id = id;
                 this.number = number;
@@ -129,7 +132,10 @@ public class LegacyRecipientStore2 {
                 private final boolean archived;
                 private final boolean profileSharingEnabled;
 
-                public Contact(@JsonProperty("name") String name, @JsonProperty("color") String color, @JsonProperty("messageExpirationTime") int messageExpirationTime, @JsonProperty("blocked") boolean blocked, @JsonProperty("archived") boolean archived,
+                @SuppressWarnings("unused")
+                public Contact(@JsonProperty("name") String name, @JsonProperty("color") String color,
+                        @JsonProperty("messageExpirationTime") int messageExpirationTime,
+                        @JsonProperty("blocked") boolean blocked, @JsonProperty("archived") boolean archived,
                         @JsonProperty("profileSharingEnabled") boolean profileSharingEnabled) {
                     super();
                     this.name = name;
@@ -140,26 +146,32 @@ public class LegacyRecipientStore2 {
                     this.profileSharingEnabled = profileSharingEnabled;
                 }
 
+                @SuppressWarnings("unused")
                 public String name() {
                     return name;
                 }
 
+                @SuppressWarnings("unused")
                 public String color() {
                     return color;
                 }
 
+                @SuppressWarnings("unused")
                 public int messageExpirationTime() {
                     return messageExpirationTime;
                 }
 
+                @SuppressWarnings("unused")
                 public boolean blocked() {
                     return blocked;
                 }
 
+                @SuppressWarnings("unused")
                 public boolean archived() {
                     return archived;
                 }
 
+                @SuppressWarnings("unused")
                 public boolean profileSharingEnabled() {
                     return profileSharingEnabled;
                 }
@@ -177,9 +189,14 @@ public class LegacyRecipientStore2 {
                 private final String unidentifiedAccessMode;
                 private final Set<String> capabilities;
 
-                public Profile(@JsonProperty("lastUpdateTimestamp") long lastUpdateTimestamp, @JsonProperty("givenName") String givenName, @JsonProperty("familyName") String familyName, @JsonProperty("about") String about,
-                        @JsonProperty("aboutEmoji") String aboutEmoji, @JsonProperty("avatarUrlPath") String avatarUrlPath, @JsonProperty("mobileCoinAddress") String mobileCoinAddress,
-                        @JsonProperty("unidentifiedAccessMode") String unidentifiedAccessMode, @JsonProperty("capabilities") Set<String> capabilities) {
+                @SuppressWarnings("unused")
+                public Profile(@JsonProperty("lastUpdateTimestamp") long lastUpdateTimestamp,
+                        @JsonProperty("givenName") String givenName, @JsonProperty("familyName") String familyName,
+                        @JsonProperty("about") String about, @JsonProperty("aboutEmoji") String aboutEmoji,
+                        @JsonProperty("avatarUrlPath") String avatarUrlPath,
+                        @JsonProperty("mobileCoinAddress") String mobileCoinAddress,
+                        @JsonProperty("unidentifiedAccessMode") String unidentifiedAccessMode,
+                        @JsonProperty("capabilities") Set<String> capabilities) {
                     super();
                     this.lastUpdateTimestamp = lastUpdateTimestamp;
                     this.givenName = givenName;
@@ -192,77 +209,95 @@ public class LegacyRecipientStore2 {
                     this.capabilities = capabilities;
                 }
 
+                @SuppressWarnings("unused")
                 public long lastUpdateTimestamp() {
                     return lastUpdateTimestamp;
                 }
 
+                @SuppressWarnings("unused")
                 public String givenName() {
                     return givenName;
                 }
 
+                @SuppressWarnings("unused")
                 public String familyName() {
                     return familyName;
                 }
 
+                @SuppressWarnings("unused")
                 public String about() {
                     return about;
                 }
 
+                @SuppressWarnings("unused")
                 public String aboutEmoji() {
                     return aboutEmoji;
                 }
 
+                @SuppressWarnings("unused")
                 public String avatarUrlPath() {
                     return avatarUrlPath;
                 }
 
+                @SuppressWarnings("unused")
                 public String mobileCoinAddress() {
                     return mobileCoinAddress;
                 }
 
+                @SuppressWarnings("unused")
                 public String unidentifiedAccessMode() {
                     return unidentifiedAccessMode;
                 }
 
+                @SuppressWarnings("unused")
                 public Set<String> capabilities() {
                     return capabilities;
                 }
 
             }
 
+            @SuppressWarnings("unused")
             public long id() {
                 return id;
             }
 
+            @SuppressWarnings("unused")
             public String number() {
                 return number;
             }
 
+            @SuppressWarnings("unused")
             public String uuid() {
                 return uuid;
             }
 
+            @SuppressWarnings("unused")
             public String profileKey() {
                 return profileKey;
             }
 
+            @SuppressWarnings("unused")
             public String expiringProfileKeyCredential() {
                 return expiringProfileKeyCredential;
             }
 
+            @SuppressWarnings("unused")
             public Contact contact() {
                 return contact;
             }
 
+            @SuppressWarnings("unused")
             public Profile profile() {
                 return profile;
             }
         }
 
+        @SuppressWarnings("unused")
         public List<Recipient> getRecipients() {
             return recipients;
         }
 
+        @SuppressWarnings("unused")
         public long getLastId() {
             return lastId;
         }

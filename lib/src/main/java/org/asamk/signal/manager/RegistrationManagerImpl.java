@@ -111,18 +111,19 @@ class RegistrationManagerImpl implements RegistrationManager {
     @Override
     public void verifyAccount(String verificationCode, String pin)
             throws IOException, PinLockedException, IncorrectPinException {
-        final var result = NumberVerificationUtils.verifyNumber(verificationCode, pin, pinHelper,
+        String _pin = pin;
+        final var result = NumberVerificationUtils.verifyNumber(verificationCode, _pin, pinHelper,
                 this::verifyAccountWithCode);
         final var response = result.first();
         final var masterKey = result.second();
         if (masterKey == null) {
-            pin = null;
+            _pin = null;
         }
 
         // accountManager.setGcmId(Optional.of(GoogleCloudMessaging.getInstance(this).register(REGISTRATION_ID)));
         final var aci = ACI.parseOrNull(response.getUuid());
         final var pni = PNI.parseOrNull(response.getPni());
-        account.finishRegistration(aci, pni, masterKey, pin);
+        account.finishRegistration(aci, pni, masterKey, _pin);
         accountFileUpdater.updateAccountIdentifiers(account.getNumber(), aci);
 
         ManagerImpl m = null;
