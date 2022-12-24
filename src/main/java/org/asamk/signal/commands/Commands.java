@@ -15,6 +15,7 @@ public class Commands {
         addCommand(new DaemonCommand());
         addCommand(new DeleteLocalAccountDataCommand());
         addCommand(new FinishLinkCommand());
+        addCommand(new GetAttachmentCommand());
         addCommand(new GetUserStatusCommand());
         addCommand(new JoinGroupCommand());
         addCommand(new JsonRpcDispatcherCommand());

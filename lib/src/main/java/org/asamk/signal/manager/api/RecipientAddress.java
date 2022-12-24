@@ -68,9 +68,6 @@ public class RecipientAddress {
         return (uuid.isPresent() && other.uuid.isPresent() && uuid.get().equals(other.uuid.get()))
                 || (number.isPresent() && other.number.isPresent() && number.get().equals(other.number.get()));
     }
-
-    public SignalServiceAddress toSignalServiceAddress() {
-        return new SignalServiceAddress(getServiceId(), number);
     }
 
     public Optional<UUID> uuid() {
@@ -83,5 +80,4 @@ public class RecipientAddress {
 
     public static UUID getUnknownUuid() {
         return UNKNOWN_UUID;
-    }
 }

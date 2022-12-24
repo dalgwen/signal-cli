@@ -47,7 +47,7 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
     public PreKeyRecord loadPreKey(int preKeyId) throws InvalidKeyIdException {
         final var preKey = getPreKey(preKeyId);
         if (preKey == null) {
-            throw new InvalidKeyIdException("No such signed pre key record!");
+            throw new InvalidKeyIdException("No such signed pre key record: " + preKeyId);
         }
         return preKey;
     }
@@ -60,7 +60,7 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, accountIdType);
-                statement.setLong(2, preKeyId);
+                statement.setInt(2, preKeyId);
                 final var keyPair = record.getKeyPair();
                 statement.setBytes(3, keyPair.getPublicKey().serialize());
                 statement.setBytes(4, keyPair.getPrivateKey().serialize());
@@ -84,7 +84,7 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, accountIdType);
-                statement.setLong(2, preKeyId);
+                statement.setInt(2, preKeyId);
                 statement.executeUpdate();
             }
         } catch (SQLException e) {
@@ -122,7 +122,7 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
             try (final var statement = connection.prepareStatement(sql)) {
                 for (final var record : preKeys) {
                     statement.setInt(1, accountIdType);
-                    statement.setLong(2, record.getId());
+                    statement.setInt(2, record.getId());
                     final var keyPair = record.getKeyPair();
                     statement.setBytes(3, keyPair.getPublicKey().serialize());
                     statement.setBytes(4, keyPair.getPrivateKey().serialize());
@@ -144,7 +144,7 @@ public class PreKeyStore implements org.signal.libsignal.protocol.state.PreKeySt
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
                 statement.setInt(1, accountIdType);
-                statement.setLong(2, preKeyId);
+                statement.setInt(2, preKeyId);
                 return Utils.executeQueryForOptional(statement, this::getPreKeyRecordFromResultSet).orElse(null);
             }
         } catch (SQLException e) {

@@ -22,7 +22,7 @@ import com.zaxxer.hikari.HikariDataSource;
 public class AccountDatabase extends Database {
 
     private final static Logger logger = LoggerFactory.getLogger(AccountDatabase.class);
-    private static final long DATABASE_VERSION = 10;
+    private static final long DATABASE_VERSION = 11;
 
     private AccountDatabase(final HikariDataSource dataSource) {
         super(logger, DATABASE_VERSION, dataSource);
@@ -258,6 +258,14 @@ public class AccountDatabase extends Database {
                         + "                                          WHERE uuid IS NOT NULL;\n"
                         + "                                        DROP TABLE session;\n"
                         + "                                        ALTER TABLE session2 RENAME TO session;\n" + "");
+            }
+        }
+        if (oldVersion < 11) {
+            logger.debug("Updating database: Adding pni field");
+            try (final var statement = connection.createStatement()) {
+                statement.executeUpdate("""
+                                        ALTER TABLE recipient ADD COLUMN pni BLOB;
+                                        """);
             }
         }
     }

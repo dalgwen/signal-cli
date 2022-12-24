@@ -46,6 +46,7 @@ import org.freedesktop.dbus.types.Variant;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -58,6 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -145,7 +147,7 @@ public class DbusManagerImpl implements Manager {
                 emptyIfNull(updateProfile.getFamilyName()),
                 emptyIfNull(updateProfile.getAbout()),
                 emptyIfNull(updateProfile.getAboutEmoji()),
-                updateProfile.getAvatar() == null ? "" : updateProfile.getAvatar().getPath(),
+                updateProfile.getAvatar() == null ? "" : updateProfile.getAvatar(),
                 updateProfile.isDeleteAvatar());
     }
 
@@ -229,11 +231,11 @@ public class DbusManagerImpl implements Manager {
 
     @Override
     public Pair<GroupId, SendGroupMessageResults> createGroup(
-            final String name, final Set<RecipientIdentifier.Single> members, final File avatarFile
+            final String name, final Set<RecipientIdentifier.Single> members, final String avatarFile
     ) throws IOException, AttachmentInvalidException {
         final var newGroupId = signal.createGroup(emptyIfNull(name),
                 members.stream().map(RecipientIdentifier.Single::getIdentifier).toList(),
-                avatarFile == null ? "" : avatarFile.getPath());
+                avatarFile == null ? "" : avatarFile);
         return new Pair<>(GroupId.unknownVersion(newGroupId), new SendGroupMessageResults(0, List.of()));
     }
 
@@ -251,7 +253,7 @@ public class DbusManagerImpl implements Manager {
         if (updateGroup.getAvatarFile() != null) {
             group.Set("org.asamk.Signal.Group",
                     "Avatar",
-                    updateGroup.getAvatarFile() == null ? "" : updateGroup.getAvatarFile().getPath());
+                    updateGroup.getAvatarFile() == null ? "" : updateGroup.getAvatarFile());
         }
         if (updateGroup.getExpirationTimer() != null) {
             group.Set("org.asamk.Signal.Group", "MessageExpirationTimer", updateGroup.getExpirationTimer());
@@ -364,7 +366,8 @@ public class DbusManagerImpl implements Manager {
             final boolean remove,
             final RecipientIdentifier.Single targetAuthor,
             final long targetSentTimestamp,
-            final Set<RecipientIdentifier> recipients
+            final Set<RecipientIdentifier> recipients,
+            final boolean isStory
     ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
         return handleMessage(recipients,
                 numbers -> signal.sendMessageReaction(emoji,
@@ -497,38 +500,45 @@ public class DbusManagerImpl implements Manager {
     }
 
     @Override
-    public void receiveMessages(final ReceiveMessageHandler handler) throws IOException {
-        addReceiveHandler(handler);
-        try {
-            synchronized (this) {
-                this.wait();
-            }
-        } catch (InterruptedException ignored) {
-        }
-        removeReceiveHandler(handler);
-    }
-
-    @Override
     public void receiveMessages(
-            final Duration timeout, final ReceiveMessageHandler handler
+            Optional<Duration> timeout, Optional<Integer> maxMessages, ReceiveMessageHandler handler
     ) throws IOException {
+        final var remainingMessages = new AtomicInteger(maxMessages.orElse(-1));
         final var lastMessage = new AtomicLong(System.currentTimeMillis());
+        final var thread = Thread.currentThread();
 
         final ReceiveMessageHandler receiveHandler = (envelope, e) -> {
             lastMessage.set(System.currentTimeMillis());
             handler.handleMessage(envelope, e);
+            if (remainingMessages.get() > 0) {
+                if (remainingMessages.decrementAndGet() <= 0) {
+                    remainingMessages.set(0);
+                    thread.interrupt();
+                }
+            }
         };
         addReceiveHandler(receiveHandler);
-        while (true) {
-            try {
-                final var sleepTimeRemaining = timeout.toMillis() - (System.currentTimeMillis() - lastMessage.get());
-                if (sleepTimeRemaining < 0) {
-                    break;
+        if (timeout.isPresent()) {
+            while (remainingMessages.get() != 0) {
+                try {
+                    final var passedTime = System.currentTimeMillis() - lastMessage.get();
+                    final var sleepTimeRemaining = timeout.get().toMillis() - passedTime;
+                    if (sleepTimeRemaining < 0) {
+                        break;
+                    }
+                    Thread.sleep(sleepTimeRemaining);
+                } catch (InterruptedException ignored) {
                 }
-                Thread.sleep(sleepTimeRemaining);
+            }
+        } else {
+            try {
+                synchronized (this) {
+                    this.wait();
+                }
             } catch (InterruptedException ignored) {
             }
         }
+
         removeReceiveHandler(receiveHandler);
     }
 
@@ -905,6 +915,11 @@ public class DbusManagerImpl implements Manager {
                     getValue(a, "isGif"),
                     getValue(a, "isBorderless"));
         }).toList();
+    }
+
+    @Override
+    public InputStream retrieveAttachment(final String id) throws IOException {
+        throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("unchecked")

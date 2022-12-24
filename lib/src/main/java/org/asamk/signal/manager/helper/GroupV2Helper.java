@@ -25,7 +25,6 @@ import org.asamk.signal.manager.groups.GroupUtils;
 import org.asamk.signal.manager.groups.NotAGroupMemberException;
 import org.asamk.signal.manager.storage.groups.GroupInfoV2;
 import org.asamk.signal.manager.storage.recipients.RecipientId;
-import org.asamk.signal.manager.util.IOUtils;
 import org.asamk.signal.manager.util.Utils;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.VerificationFailedException;
@@ -134,9 +133,8 @@ class GroupV2Helper {
         return partialDecryptedGroup.getRevision();
     }
 
-    Pair<GroupInfoV2, DecryptedGroup> createGroup(String name, Set<RecipientId> members, File avatarFile)
+    Pair<GroupInfoV2, DecryptedGroup> createGroup(String name, Set<RecipientId> members, byte[] avatarFile)
             throws IOException {
-        final var avatarBytes = readAvatarBytes(avatarFile);
         final var newGroup = buildNewGroup(name, members, avatarBytes);
         if (newGroup == null) {
             return null;
@@ -166,14 +164,6 @@ class GroupV2Helper {
         return new Pair<>(g, decryptedGroup);
     }
 
-    private byte[] readAvatarBytes(final File avatarFile) throws IOException {
-        final byte[] avatarBytes;
-        try (InputStream avatar = avatarFile == null ? null : new FileInputStream(avatarFile)) {
-            avatarBytes = avatar == null ? null : IOUtils.readFully(avatar);
-        }
-        return avatarBytes;
-    }
-
     private GroupsV2Operations.NewGroup buildNewGroup(String name, Set<RecipientId> members, byte[] avatar) {
         final var profileKeyCredential = context.getProfileHelper()
                 .getExpiringProfileKeyCredential(context.getAccount().getSelfRecipientId());
@@ -197,8 +187,9 @@ class GroupV2Helper {
                 self, candidates, Member.Role.DEFAULT, 0);
     }
 
-    Pair<DecryptedGroup, GroupChange> updateGroup(GroupInfoV2 groupInfoV2, String name, String description,
-            File avatarFile) throws IOException {
+    Pair<DecryptedGroup, GroupChange> updateGroup(
+            GroupInfoV2 groupInfoV2, String name, String description, byte[] avatarFile
+    ) throws IOException {
         final var groupSecretParams = GroupSecretParams.deriveFromMasterKey(groupInfoV2.getMasterKey());
         var groupOperations = dependencies.getGroupsV2Operations().forGroup(groupSecretParams);
 
@@ -209,8 +200,7 @@ class GroupV2Helper {
         }
 
         if (avatarFile != null) {
-            final var avatarBytes = readAvatarBytes(avatarFile);
-            var avatarCdnKey = dependencies.getGroupsV2Api().uploadAvatar(avatarBytes, groupSecretParams,
+            var avatarCdnKey = dependencies.getGroupsV2Api().uploadAvatar(avatarFile, groupSecretParams,
                     getGroupAuthForToday(groupSecretParams));
             change.setModifyAvatar(GroupChange.Actions.ModifyAvatarAction.newBuilder().setAvatar(avatarCdnKey));
         }

@@ -140,12 +140,12 @@ public final class ProfileHelper {
      * @param avatar if avatar is null the image from the local avatar store is used (if present),
      */
     public void setProfile(String givenName, final String familyName, String about, String aboutEmoji,
-            Optional<File> avatar, byte[] mobileCoinAddress) throws IOException {
+            Optional<String> avatar, byte[] mobileCoinAddress) throws IOException {
         setProfile(true, false, givenName, familyName, about, aboutEmoji, avatar, mobileCoinAddress);
     }
 
     public void setProfile(boolean uploadProfile, boolean forceUploadAvatar, String givenName, final String familyName,
-            String about, String aboutEmoji, Optional<File> avatar, byte[] mobileCoinAddress) throws IOException {
+            String about, String aboutEmoji, Optional<String> avatar, byte[] mobileCoinAddress) throws IOException {
         var profile = getSelfProfile();
         var builder = profile == null ? Profile.newBuilder() : Profile.newBuilder(profile);
         if (givenName != null) {
@@ -167,7 +167,8 @@ public final class ProfileHelper {
 
         if (uploadProfile) {
             final var streamDetails = avatar != null && avatar.isPresent()
-                    ? Utils.createStreamDetailsFromFile(avatar.get())
+                    ? Utils.createStreamDetails(avatar.get())
+                    .first()
                     : forceUploadAvatar && avatar == null
                             ? context.getAvatarStore().retrieveProfileAvatar(account.getSelfRecipientAddress())
                             : null;
@@ -192,8 +193,11 @@ public final class ProfileHelper {
 
         if (avatar != null) {
             if (avatar.isPresent()) {
+                final var streamDetails = Utils.createStreamDetails(avatar.get()).first();
+
                 context.getAvatarStore().storeProfileAvatar(account.getSelfRecipientAddress(),
-                        outputStream -> IOUtils.copyFileToStream(avatar.get(), outputStream));
+                        outputStream ->  IOUtils.copyStream(streamDetails.getStream(), outputStream));
+
             } else {
                 context.getAvatarStore().deleteProfileAvatar(account.getSelfRecipientAddress());
             }

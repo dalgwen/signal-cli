@@ -5,6 +5,7 @@ vim:set ts=4 sw=4 tw=82 noet:
 :quotes.~:
 
 = signal-cli (1)
+:doctype: manpage
 
 == Name
 
@@ -78,6 +79,9 @@ Choose when to trust new identities:
 - `on-first-use` (default): Trust the first seen identity key from new users, changed keys must be verified manually
 - `always`: Trust any new identity key without verification
 - `never`: Don't trust any unknown identity key, every key must be verified manually
+
+*--disable-send-log*::
+Disable message send log (for resending messages that recipient couldn't decrypt).
 
 == Commands
 
@@ -272,6 +276,12 @@ Specify the description for the link preview (optional).
 *--preview-image*::
 Specify the image file for the link preview (optional).
 
+*--story-timestamp*::
+Specify the timestamp of a story to reply to.
+
+*--story-author*::
+Specify the number of the author of the story.
+
 *-e*, *--end-session*::
 Clear session state and send end session message.
 
@@ -309,6 +319,9 @@ Specify the timestamp of the message to which to react.
 
 *-r*, *--remove*::
 Remove a reaction.
+
+*--story*::
+React to a story instead of a normal message
 
 === sendReceipt
 
@@ -359,6 +372,9 @@ In json mode this is outputted as one json object per line.
 *-t* TIMEOUT, *--timeout* TIMEOUT::
 Number of seconds to wait for new messages (negative values disable timeout).
 Default is 5 seconds.
+
+*--max-messages*::
+Maximum number of messages to receive, before returning.
 
 *--ignore-attachments*::
 Don’t download attachments of received messages.
@@ -586,7 +602,7 @@ The primary device will respond with synchronization messages with full contact 
 
 === uploadStickerPack
 
-Upload a new sticker pack, consisting of a manifest file and the sticker images.
+Upload a new sticker pack, consisting of a manifest file and the sticker images. +
 Images must conform to the following specification: (see https://support.signal.org/hc/en-us/articles/360031836512-Stickers#sticker_reqs )
 
 - Static stickers in PNG or WebP format
@@ -620,26 +636,47 @@ The required manifest.json has the following format:
 PATH::
 The path of the manifest.json or a zip file containing the sticker pack you wish to upload.
 
+=== getAttachment
+
+Gets the raw data for a specified attachment.
+This is done using the ID of the attachment the recipient or group ID.
+The attachment data is returned as a Base64 String.
+
+*--id* [ID]::
+The ID of the attachment as given in the attachment list of the message.
+
+*--recipient* [RECIPIENT]::
+Specify the number which sent the attachment.
+Referred to generally as recipient.
+
+*-g* [GROUP], *--group-id* [GROUP]::
+Alternatively, specify the group IDs for which to get the attachment.
+
 === daemon
 
 signal-cli can run in daemon mode and provides an experimental dbus or JSON-RPC interface.
 If no `-a` account is given, all local accounts will be exported as separate dbus objects under the same bus name.
 
 *--dbus*::
-Export DBus interface on user bus.
-See signal-cli-dbus (5) for info on the dbus interface.
+Export DBus interface on user bus. +
+See **signal-cli-dbus**(5) for info on the dbus interface.
 
 *--dbus-system*::
-Export DBus interface on system bus.
-See signal-cli-dbus (5) for info on the dbus interface.
+Export DBus interface on system bus. +
+See **signal-cli-dbus**(5) for info on the dbus interface.
 
 *--socket [SOCKET]*::
-Export a JSON-RPC interface on a UNIX socket (default $XDG_RUNTIME_DIR/signal-cli/socket).
-See signal-cli-jsonrpc (5) for info on the JSON-RPC interface.
+Export a JSON-RPC interface on a UNIX socket (default $XDG_RUNTIME_DIR/signal-cli/socket). +
+See **signal-cli-jsonrpc**(5) for info on the JSON-RPC interface.
 
 *--tcp [HOST:PORT]*::
-Export a JSON-RPC interface on a TCP socket (default localhost:7583).
-See signal-cli-jsonrpc (5) for info on the JSON-RPC interface.
+Export a JSON-RPC interface on a TCP socket (default localhost:7583). +
+See **signal-cli-jsonrpc**(5) for info on the JSON-RPC interface.
+
+*--http [HOST:PORT]*::
+Expose a JSON-RPC interface as http endpoint (default localhost:8080).
+The JSON-RPC endpoint is `/api/v1/rpc`. +
+See **signal-cli-jsonrpc**(5) for info on the JSON-RPC interface.
 
 *--ignore-attachments*::
 Don’t download attachments of received messages.

@@ -17,6 +17,7 @@ import org.asamk.signal.manager.api.ReceiveConfig;
 import org.asamk.signal.manager.api.UntrustedIdentityException;
 import org.asamk.signal.manager.storage.SignalAccount;
 import org.asamk.signal.manager.storage.messageCache.CachedMessage;
+import org.asamk.signal.manager.storage.recipients.RecipientAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.SignalWebSocket;
@@ -79,7 +80,7 @@ public class ReceiveHelper {
     public void receiveMessagesContinuously(Manager.ReceiveMessageHandler handler) {
         while (!shouldStop) {
             try {
-                receiveMessages(Duration.ofMinutes(1), false, handler);
+                receiveMessages(Duration.ofMinutes(1), false, null, handler);
                 break;
             } catch (IOException e) {
                 logger.warn("Receiving messages failed, retrying", e);
@@ -87,7 +88,7 @@ public class ReceiveHelper {
         }
     }
 
-    public void receiveMessages(Duration timeout, boolean returnOnTimeout, Manager.ReceiveMessageHandler handler)
+    public void receiveMessages(Duration timeout, boolean returnOnTimeout, Integer maxMessages, Manager.ReceiveMessageHandler handler)
             throws IOException {
         needsToRetryFailedMessages = true;
         hasCaughtUpWithOldMessages = false;
@@ -103,7 +104,7 @@ public class ReceiveHelper {
         signalWebSocket.connect();
 
         try {
-            receiveMessagesInternal(signalWebSocket, timeout, returnOnTimeout, handler, queuedActions);
+            receiveMessagesInternal(signalWebSocket, timeout, returnOnTimeout, maxMessages, handler, queuedActions);
         } finally {
             hasCaughtUpWithOldMessages = false;
             handleQueuedActions(queuedActions.keySet());
@@ -115,12 +116,13 @@ public class ReceiveHelper {
     }
 
     private void receiveMessagesInternal(final SignalWebSocket signalWebSocket, Duration timeout,
-            boolean returnOnTimeout, Manager.ReceiveMessageHandler handler,
+            boolean returnOnTimeout, Integer maxMessages, Manager.ReceiveMessageHandler handler,
             final Map<HandleAction, HandleAction> queuedActions) throws IOException {
+        int remainingMessages = maxMessages == null ? -1 : maxMessages;
         var backOffCounter = 0;
         isWaitingForMessage = false;
 
-        while (!shouldStop) {
+        while (!shouldStop && remainingMessages != 0) {
             if (needsToRetryFailedMessages) {
                 retryFailedReceivedMessages(handler);
                 needsToRetryFailedMessages = false;
@@ -147,6 +149,9 @@ public class ReceiveHelper {
                 backOffCounter = 0;
 
                 if (result.isPresent()) {
+                    if (remainingMessages > 0) {
+                        remainingMessages -= 1;
+                    }
                     envelope = result.get();
                     logger.debug("New message received from server");
                 } else {
@@ -256,7 +261,8 @@ public class ReceiveHelper {
             }
             if (!envelope.hasSourceUuid()) {
                 final var identifier = ((UntrustedIdentityException) exception).getSender();
-                final var recipientId = account.getRecipientResolver().resolveRecipient(identifier.getServiceId());
+                final var recipientId = account.getRecipientResolver()
+                        .resolveRecipient(new RecipientAddress(identifier));
                 try {
                     account.getMessageCache().replaceSender(cachedMessage, recipientId);
                 } catch (IOException ioException) {

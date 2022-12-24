@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import org.asamk.signal.manager.Settings;
 import org.asamk.signal.manager.api.Pair;
 import org.asamk.signal.manager.api.TrustLevel;
 import org.asamk.signal.manager.config.ServiceEnvironment;
@@ -37,7 +38,6 @@ import org.asamk.signal.manager.storage.groups.LegacyGroupStore;
 import org.asamk.signal.manager.storage.identities.IdentityKeyStore;
 import org.asamk.signal.manager.storage.identities.LegacyIdentityKeyStore;
 import org.asamk.signal.manager.storage.identities.SignalIdentityKeyStore;
-import org.asamk.signal.manager.storage.identities.TrustNewIdentity;
 import org.asamk.signal.manager.storage.messageCache.MessageCache;
 import org.asamk.signal.manager.storage.prekeys.LegacyPreKeyStore;
 import org.asamk.signal.manager.storage.prekeys.LegacySignedPreKeyStore;
@@ -102,7 +102,7 @@ public class SignalAccount implements Closeable {
     private final static Logger logger = LoggerFactory.getLogger(SignalAccount.class);
 
     private static final int MINIMUM_STORAGE_VERSION = 1;
-    private static final int CURRENT_STORAGE_VERSION = 5;
+    private static final int CURRENT_STORAGE_VERSION = 6;
 
     private final Object LOCK = new Object();
 
@@ -136,7 +136,7 @@ public class SignalAccount implements Closeable {
     private IdentityKeyPair pniIdentityKeyPair;
     private int localRegistrationId;
     private int localPniRegistrationId;
-    private TrustNewIdentity trustNewIdentity;
+    private Settings settings;
     private long lastReceiveTimestamp = 0;
 
     private boolean registered = false;
@@ -170,14 +170,14 @@ public class SignalAccount implements Closeable {
     }
 
     public static SignalAccount load(File dataPath, String accountPath, boolean waitForLock,
-            final TrustNewIdentity trustNewIdentity) throws IOException {
+            final Settings settings) throws IOException {
         logger.trace("Opening account file");
         final var fileName = getFileName(dataPath, accountPath);
         final var pair = openFileChannel(fileName, waitForLock);
         try {
             var signalAccount = new SignalAccount(pair.first(), pair.second());
             logger.trace("Loading account file");
-            signalAccount.load(dataPath, accountPath, trustNewIdentity);
+            signalAccount.load(dataPath, accountPath, settings);
             logger.trace("Migrating legacy parts of account file");
             signalAccount.migrateLegacyConfigs();
 
@@ -191,7 +191,7 @@ public class SignalAccount implements Closeable {
 
     public static SignalAccount create(File dataPath, String accountPath, String number,
             ServiceEnvironment serviceEnvironment, IdentityKeyPair aciIdentityKey, IdentityKeyPair pniIdentityKey,
-            int registrationId, int pniRegistrationId, ProfileKey profileKey, final TrustNewIdentity trustNewIdentity)
+            int registrationId, int pniRegistrationId, ProfileKey profileKey, final Settings settings)
             throws IOException {
         IOUtils.createPrivateDirectories(dataPath);
         var fileName = getFileName(dataPath, accountPath);
@@ -212,7 +212,7 @@ public class SignalAccount implements Closeable {
         signalAccount.pniIdentityKeyPair = pniIdentityKey;
         signalAccount.localRegistrationId = registrationId;
         signalAccount.localPniRegistrationId = pniRegistrationId;
-        signalAccount.trustNewIdentity = trustNewIdentity;
+        signalAccount.settings = settings;
         signalAccount.configurationStore = new ConfigurationStore(signalAccount::saveConfigurationStore);
 
         signalAccount.registered = false;
@@ -227,16 +227,16 @@ public class SignalAccount implements Closeable {
     public static SignalAccount createOrUpdateLinkedAccount(File dataPath, String accountPath, String number,
             ServiceEnvironment serviceEnvironment, ACI aci, PNI pni, String password, String encryptedDeviceName,
             int deviceId, IdentityKeyPair aciIdentityKey, IdentityKeyPair pniIdentityKey, int registrationId,
-            int pniRegistrationId, ProfileKey profileKey, final TrustNewIdentity trustNewIdentity) throws IOException {
+            int pniRegistrationId, ProfileKey profileKey, final Settings settings) throws IOException {
         IOUtils.createPrivateDirectories(dataPath);
         var fileName = getFileName(dataPath, accountPath);
         if (!fileName.exists()) {
             return createLinkedAccount(dataPath, accountPath, number, serviceEnvironment, aci, pni, password,
                     encryptedDeviceName, deviceId, aciIdentityKey, pniIdentityKey, registrationId, pniRegistrationId,
-                    profileKey, trustNewIdentity);
+                    profileKey, settings);
         }
 
-        final var signalAccount = load(dataPath, accountPath, true, trustNewIdentity);
+        final var signalAccount = load(dataPath, accountPath, true, settings);
         signalAccount.setProvisioningData(number, aci, pni, password, encryptedDeviceName, deviceId, aciIdentityKey,
                 pniIdentityKey, profileKey);
         signalAccount.getRecipientTrustedResolver()
@@ -265,7 +265,7 @@ public class SignalAccount implements Closeable {
     private static SignalAccount createLinkedAccount(File dataPath, String accountPath, String number,
             ServiceEnvironment serviceEnvironment, ACI aci, PNI pni, String password, String encryptedDeviceName,
             int deviceId, IdentityKeyPair aciIdentityKey, IdentityKeyPair pniIdentityKey, int registrationId,
-            int pniRegistrationId, ProfileKey profileKey, final TrustNewIdentity trustNewIdentity) throws IOException {
+            int pniRegistrationId, ProfileKey profileKey, final Settings settings) throws IOException {
         var fileName = getFileName(dataPath, accountPath);
         IOUtils.createPrivateFile(fileName);
 
@@ -277,7 +277,7 @@ public class SignalAccount implements Closeable {
         signalAccount.serviceEnvironment = serviceEnvironment;
         signalAccount.localRegistrationId = registrationId;
         signalAccount.localPniRegistrationId = pniRegistrationId;
-        signalAccount.trustNewIdentity = trustNewIdentity;
+        signalAccount.settings = settings;
         signalAccount.setProvisioningData(number, aci, pni, password, encryptedDeviceName, deviceId, aciIdentityKey,
                 pniIdentityKey, profileKey);
 
@@ -432,9 +432,10 @@ public class SignalAccount implements Closeable {
     }
 
     @SuppressWarnings("null")
-    private void load(File dataPath, String accountPath, final TrustNewIdentity trustNewIdentity) throws IOException {
+    private void load(File dataPath, String accountPath, final Settings settings) throws IOException {
         this.dataPath = dataPath;
         this.accountPath = accountPath;
+        this.settings = settings;
         final JsonNode rootNode;
         synchronized (fileChannel) {
             fileChannel.position(0);
@@ -562,6 +563,9 @@ public class SignalAccount implements Closeable {
                 migratedLegacyConfig = true;
             }
         }
+        if (previousStorageVersion < 6) {
+            getRecipientTrustedResolver().resolveSelfRecipientTrusted(getSelfRecipientAddress());
+        }
         final var legacyAciPreKeysPath = getAciPreKeysPath(dataPath, accountPath);
         if (legacyAciPreKeysPath.exists()) {
             LegacyPreKeyStore.migrate(legacyAciPreKeysPath, getAciPreKeyStore());
@@ -606,7 +610,6 @@ public class SignalAccount implements Closeable {
 
         this.aciIdentityKeyPair = aciIdentityKeyPair;
         this.localRegistrationId = registrationId;
-        this.trustNewIdentity = trustNewIdentity;
 
         migratedLegacyConfig = loadLegacyStores(rootNode, legacySignalProtocolStore) || migratedLegacyConfig;
 
@@ -1039,7 +1042,7 @@ public class SignalAccount implements Closeable {
 
     public IdentityKeyStore getIdentityKeyStore() {
         return getOrCreate(() -> identityKeyStore,
-                () -> identityKeyStore = new IdentityKeyStore(getAccountDatabase(), trustNewIdentity));
+                () -> identityKeyStore = new IdentityKeyStore(getAccountDatabase(), settings.trustNewIdentity()));
     }
 
     public SignalIdentityKeyStore getAciIdentityKeyStore() {
@@ -1117,7 +1120,8 @@ public class SignalAccount implements Closeable {
 
     public MessageSendLogStore getMessageSendLogStore() {
         return getOrCreate(() -> messageSendLogStore,
-                () -> messageSendLogStore = new MessageSendLogStore(getAccountDatabase()));
+                () -> messageSendLogStore = new MessageSendLogStore(getAccountDatabase(),
+                        settings.disableMessageSendLog()));
     }
 
     public CredentialsProvider getCredentialsProvider() {

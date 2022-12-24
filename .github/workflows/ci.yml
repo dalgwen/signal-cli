@@ -1,6 +1,14 @@
 name: signal-cli CI
 
-on: [ push, pull_request, workflow_call ]
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
 
 jobs:
   build:
@@ -17,6 +25,7 @@ jobs:
         with:
           distribution: 'adopt'
           java-version: ${{ matrix.java }}
+          cache: 'gradle'
       - name: Build with Gradle
         run: ./gradlew --no-daemon build
       - name: Compress archive
@@ -37,6 +46,7 @@ jobs:
         with:
           version: 'latest'
           java-version: '17'
+          cache: 'gradle'
           components: 'native-image'
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build with Gradle

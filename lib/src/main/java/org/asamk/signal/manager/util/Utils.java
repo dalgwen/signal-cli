@@ -1,15 +1,12 @@
 package org.asamk.signal.manager.util;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -34,19 +31,6 @@ public class Utils {
 
     private final static Logger logger = LoggerFactory.getLogger(Utils.class);
 
-    public static String getFileMimeType(final File file, final String defaultMimeType) throws IOException {
-        var mime = Files.probeContentType(file.toPath());
-        if (mime == null) {
-            try (final InputStream bufferedStream = new BufferedInputStream(new FileInputStream(file))) {
-                mime = URLConnection.guessContentTypeFromStream(bufferedStream);
-            }
-        }
-        if (mime == null) {
-            return defaultMimeType;
-        }
-        return mime;
-    }
-
     @SuppressWarnings("null")
     public static Pair<StreamDetails, Optional<String>> createStreamDetailsFromDataURI(final String dataURI) {
         final DataURI uri = DataURI.of(dataURI);
@@ -58,7 +42,7 @@ public class Utils {
     public static StreamDetails createStreamDetailsFromFile(final File file) throws IOException {
         final InputStream stream = new FileInputStream(file);
         final var size = file.length();
-        final var mime = getFileMimeType(file, "application/octet-stream");
+        final var mime = MimeUtils.getFileMimeType(file).orElse(MimeUtils.OCTET_STREAM);
         return new StreamDetails(stream, mime, size);
     }
 
@@ -131,7 +115,7 @@ public class Utils {
         for (var param : params) {
             final var paramParts = param.split("=");
             var name = URLDecoder.decode(paramParts[0], StandardCharsets.UTF_8);
-            var value = URLDecoder.decode(paramParts[1], StandardCharsets.UTF_8);
+            var value = paramParts.length == 1 ? null : URLDecoder.decode(paramParts[1], StandardCharsets.UTF_8);
             map.put(name, value);
         }
         return map;

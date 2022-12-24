@@ -16,9 +16,10 @@ public class Message {
     private final Optional<Quote> quote;
     private final Optional<Sticker> sticker;
     private final List<Preview> previews;
+    private final Optional<StoryReply> storyReply
 
     public Message(@JsonProperty("messageText") String messageText, @JsonProperty("attachments") List<String> attachments, @JsonProperty("mentions") List<Mention> mentions, @JsonProperty("quote") Optional<Quote> quote,
-            @JsonProperty("sticker") Optional<Sticker> sticker, @JsonProperty("previews") List<Preview> previews) {
+            @JsonProperty("sticker") Optional<Sticker> sticker, @JsonProperty("previews") List<Preview> previews, Optional<StoryReply> storyReply) {
         super();
         this.messageText = messageText;
         this.attachments = attachments;
@@ -26,6 +27,7 @@ public class Message {
         this.quote = quote;
         this.sticker = sticker;
         this.previews = previews;
+        this.storyReply = storyReply;get and set
     }
 
     public static class Mention {
@@ -134,6 +136,8 @@ public class Message {
         }
 
     }
+    
+    public record StoryReply(long timestamp, RecipientIdentifier.Single author) {}
 
     public String messageText() {
         return messageText;

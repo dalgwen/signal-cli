@@ -27,7 +27,6 @@ import org.asamk.signal.manager.config.ServiceConfig;
 import org.asamk.signal.manager.config.ServiceEnvironmentConfig;
 import org.asamk.signal.manager.storage.SignalAccount;
 import org.asamk.signal.manager.storage.accounts.AccountsStore;
-import org.asamk.signal.manager.storage.identities.TrustNewIdentity;
 import org.asamk.signal.manager.util.KeyUtils;
 import org.signal.libsignal.protocol.IdentityKeyPair;
 import org.signal.libsignal.protocol.util.KeyHelper;
@@ -128,7 +127,7 @@ class ProvisioningManagerImpl implements ProvisioningManager {
             account = SignalAccount.createOrUpdateLinkedAccount(pathConfig.dataPath(), accountPath, number,
                     serviceEnvironmentConfig.getType(), aci, pni, password, encryptedDeviceName, deviceId,
                     ret.getAciIdentity(), ret.getPniIdentity(), registrationId, pniRegistrationId, profileKey,
-                    TrustNewIdentity.ON_FIRST_USE);
+                    Settings.DEFAULT);
 
             ManagerImpl m = null;
             try {
@@ -172,7 +171,7 @@ class ProvisioningManagerImpl implements ProvisioningManager {
     private boolean canRelinkExistingAccount(final String accountPath) throws IOException {
         final SignalAccount signalAccount;
         try {
-            signalAccount = SignalAccount.load(pathConfig.dataPath(), accountPath, false, TrustNewIdentity.ON_FIRST_USE);
+            signalAccount = SignalAccount.load(pathConfig.dataPath(), accountPath, false, Settings.DEFAULT);
         } catch (IOException e) {
             logger.debug("Account in use or failed to load.", e);
             return false;

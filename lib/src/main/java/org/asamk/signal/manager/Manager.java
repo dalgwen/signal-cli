@@ -1,5 +1,6 @@
 package org.asamk.signal.manager;
 
+import org.asamk.signal.manager.api.AlreadyReceivingException;
 import org.asamk.signal.manager.api.AttachmentInvalidException;
 import org.asamk.signal.manager.api.Configuration;
 import org.asamk.signal.manager.api.Device;
@@ -38,6 +39,7 @@ import org.whispersystems.signalservice.api.util.PhoneNumberFormatter;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Collection;
@@ -100,7 +102,7 @@ public interface Manager extends Closeable {
     void deleteGroup(GroupId groupId) throws IOException;
 
     Pair<GroupId, SendGroupMessageResults> createGroup(
-            String name, Set<RecipientIdentifier.Single> members, File avatarFile
+            String name, Set<RecipientIdentifier.Single> members, String avatarFile
     ) throws IOException, AttachmentInvalidException, UnregisteredRecipientException;
 
     SendGroupMessageResults updateGroup(
@@ -136,7 +138,8 @@ public interface Manager extends Closeable {
             boolean remove,
             RecipientIdentifier.Single targetAuthor,
             long targetSentTimestamp,
-            Set<RecipientIdentifier> recipients
+            Set<RecipientIdentifier> recipients,
+            final boolean isStory
     ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException, UnregisteredRecipientException;
 
     SendMessageResults sendPaymentNotificationMessage(
@@ -201,12 +204,9 @@ public interface Manager extends Closeable {
     /**
      * Receive new messages from server, returns if no new message arrive in a timespan of timeout.
      */
-    void receiveMessages(Duration timeout, ReceiveMessageHandler handler) throws IOException;
-
-    /**
-     * Receive new messages from server, returns only if the thread is interrupted.
-     */
-    void receiveMessages(ReceiveMessageHandler handler) throws IOException;
+    public void receiveMessages(
+            Optional<Duration> timeout, Optional<Integer> maxMessages, ReceiveMessageHandler handler
+    ) throws IOException, AlreadyReceivingException;
 
     void setReceiveConfig(ReceiveConfig receiveConfig);
 
@@ -271,6 +271,8 @@ public interface Manager extends Closeable {
     void addAddressChangedListener(Runnable listener);
 
     void addClosedListener(Runnable listener);
+
+    InputStream retrieveAttachment(final String id) throws IOException;
 
     @Override
     void close() throws IOException;

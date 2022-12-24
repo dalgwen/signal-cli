@@ -17,16 +17,16 @@ import org.whispersystems.signalservice.internal.push.LockedException;
 import org.whispersystems.signalservice.internal.push.RequestVerificationCodeResponse;
 import org.whispersystems.signalservice.internal.push.VerifyAccountResponse;
 
+import java.util.Locale;
 public class NumberVerificationUtils {
 
     @SuppressWarnings("null")
     public static void requestVerificationCode(SignalServiceAccountManager accountManager, String captcha,
             boolean voiceVerification) throws IOException, CaptchaRequiredException, NonNormalizedPhoneNumberException {
         String _captcha = captcha == null ? null : captcha.replace("signalcaptcha://", "");
-
         final ServiceResponse<RequestVerificationCodeResponse> response;
         if (voiceVerification) {
-            response = accountManager.requestVoiceVerificationCode(Utils.getDefaultLocale(null),
+            response = accountManager.requestVoiceVerificationCode(Utils.getDefaultLocale(Locale.US),
                     Optional.ofNullable(_captcha), Optional.empty(), Optional.empty());
         } else {
             response = accountManager.requestSmsVerificationCode(false, Optional.ofNullable(_captcha), Optional.empty(),

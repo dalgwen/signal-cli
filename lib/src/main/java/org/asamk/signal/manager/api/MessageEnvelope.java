@@ -13,7 +13,7 @@ import org.asamk.signal.manager.helper.RecipientAddressResolver;
 import org.asamk.signal.manager.storage.recipients.RecipientResolver;
 import org.signal.libsignal.metadata.ProtocolException;
 import org.whispersystems.signalservice.api.messages.SignalServiceAttachment;
-import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentRemoteId;
+import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentPointer;
 import org.whispersystems.signalservice.api.messages.SignalServiceContent;
 import org.whispersystems.signalservice.api.messages.SignalServiceDataMessage;
 import org.whispersystems.signalservice.api.messages.SignalServiceEnvelope;
@@ -548,10 +548,14 @@ public class MessageEnvelope {
             static Attachment from(SignalServiceAttachment attachment, AttachmentFileProvider fileProvider) {
                 if (attachment.isPointer()) {
                     final var a = attachment.asPointer();
-                    return new Attachment(Optional.of(a.getRemoteId().toString()),
-                            Optional.of(fileProvider.getFile(a.getRemoteId())), a.getFileName(), a.getContentType(),
+                    final var attachmentFile = fileProvider.getFile(a);
+                    return new Attachment(Optional.of(attachmentFile.getName()),
+                            Optional.of(attachmentFile),
+                            a.getFileName(),
+                            a.getContentType(),
                             a.getUploadTimestamp() == 0 ? Optional.empty() : Optional.of(a.getUploadTimestamp()),
-                            a.getSize().map(Integer::longValue), a.getPreview(), Optional.empty(), a.getCaption(),
+                            a.getSize().map(Integer::longValue), a.getPreview(), Optional.empty(),
+                            a.getCaption().map(c -> c.isEmpty() ? null : c),
                             a.getWidth() == 0 ? Optional.empty() : Optional.of(a.getWidth()),
                             a.getHeight() == 0 ? Optional.empty() : Optional.of(a.getHeight()), a.getVoiceNote(),
                             a.isGif(), a.isBorderless());
@@ -1985,7 +1989,7 @@ public class MessageEnvelope {
 
     public interface AttachmentFileProvider {
 
-        File getFile(SignalServiceAttachmentRemoteId attachmentRemoteId);
+        File getFile(SignalServiceAttachmentPointer pointer);
     }
 
     public Optional<RecipientAddress> getSourceAddress() {
