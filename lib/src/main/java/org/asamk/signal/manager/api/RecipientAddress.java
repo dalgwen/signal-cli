@@ -68,7 +68,6 @@ public class RecipientAddress {
         return (uuid.isPresent() && other.uuid.isPresent() && uuid.get().equals(other.uuid.get()))
                 || (number.isPresent() && other.number.isPresent() && number.get().equals(other.number.get()));
     }
-    }
 
     public Optional<UUID> uuid() {
         return uuid;
@@ -80,4 +79,5 @@ public class RecipientAddress {
 
     public static UUID getUnknownUuid() {
         return UNKNOWN_UUID;
+    }
 }

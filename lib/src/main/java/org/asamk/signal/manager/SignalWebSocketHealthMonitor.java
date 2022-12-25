@@ -119,7 +119,7 @@ final class SignalWebSocketHealthMonitor implements HealthMonitor {
      * Sends periodic heartbeats/keep-alives over both WebSockets to prevent connection timeouts. If
      * either WebSocket fails 3 times to get a return heartbeat both are forced to be recreated.
      */
-    private class KeepAliveSender extends Thread {
+    public class KeepAliveSender extends Thread {
 
         private volatile boolean shouldKeepRunning = true;
 

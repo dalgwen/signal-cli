@@ -29,8 +29,9 @@ public class RecipientAddress {
         if (_serviceId.isEmpty() && _pni.isPresent()) {
             _serviceId = Optional.of(_pni.get());
         }
-        if (_serviceId.isPresent() && _serviceId.get() instanceof PNI sPNI) {
-            if (_pni.isPresent() && !sPNI.equals(pni.get())) {
+        if (_serviceId.isPresent() && _serviceId.get() instanceof PNI) {
+            PNI sPNI = (PNI) serviceId.get();
+            if (_pni.isPresent() && !sPNI.equals(_pni.get())) {
                 throw new AssertionError("Must not have two different PNIs!");
             }
             if (_pni.isEmpty()) {
@@ -64,7 +65,7 @@ public class RecipientAddress {
     public RecipientAddress(@JsonProperty("address") SignalServiceAddress address) {
         this(Optional.of(address.getServiceId()), Optional.empty(), address.getNumber());
     }
-    
+
     public RecipientAddress(@JsonProperty("address") org.asamk.signal.manager.api.RecipientAddress address) {
         this(address.uuid().map(ServiceId::from), Optional.empty(), address.number());
     }
@@ -74,17 +75,16 @@ public class RecipientAddress {
     }
 
     public RecipientAddress withIdentifiersFrom(RecipientAddress address) {
-        return new RecipientAddress((
-                this.serviceId.isEmpty() || this.isServiceIdPNI() || this.serviceId.equals(address.pni)
-        ) && !address.isServiceIdPNI() ? address.serviceId : this.serviceId,
-                address.pni.or(this::pni),
-                address.number.or(this::number));
+        return new RecipientAddress(
+                (this.serviceId.isEmpty() || this.isServiceIdPNI() || this.serviceId.equals(address.pni))
+                        && !address.isServiceIdPNI() ? address.serviceId : this.serviceId,
+                address.pni.or(this::pni), address.number.or(this::number));
     }
 
     public RecipientAddress removeIdentifiersFrom(RecipientAddress address) {
-        return new RecipientAddress(address.serviceId.equals(this.serviceId) || address.pni.equals(this.serviceId)
-                ? Optional.empty()
-                : this.serviceId,
+        return new RecipientAddress(
+                address.serviceId.equals(this.serviceId) || address.pni.equals(this.serviceId) ? Optional.empty()
+                        : this.serviceId,
                 address.pni.equals(this.pni) || address.serviceId.equals(this.pni) ? Optional.empty() : this.pni,
                 address.number.equals(this.number) ? Optional.empty() : this.number);
     }
@@ -136,21 +136,11 @@ public class RecipientAddress {
     }
 
     public boolean hasAdditionalIdentifiersThan(RecipientAddress address) {
-        return (
-                serviceId.isPresent() && (
-                        address.serviceId.isEmpty() || (
-                                !address.serviceId.equals(serviceId) && !address.pni.equals(serviceId)
-                        )
-                )
-        ) || (
-                pni.isPresent() && !address.serviceId.equals(pni) && (
-                        address.pni.isEmpty() || !address.pni.equals(pni)
-                )
-        ) || (
-                number.isPresent() && (
-                        address.number.isEmpty() || !address.number.equals(number)
-                )
-        );
+        return (serviceId.isPresent() && (address.serviceId.isEmpty()
+                || (!address.serviceId.equals(serviceId) && !address.pni.equals(serviceId))))
+                || (pni.isPresent() && !address.serviceId.equals(pni)
+                        && (address.pni.isEmpty() || !address.pni.equals(pni)))
+                || (number.isPresent() && (address.number.isEmpty() || !address.number.equals(number)));
     }
 
     public boolean hasOnlyPniAndNumber() {

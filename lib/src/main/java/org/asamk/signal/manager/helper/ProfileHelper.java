@@ -1,6 +1,5 @@
 package org.asamk.signal.manager.helper;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
@@ -167,8 +166,7 @@ public final class ProfileHelper {
 
         if (uploadProfile) {
             final var streamDetails = avatar != null && avatar.isPresent()
-                    ? Utils.createStreamDetails(avatar.get())
-                    .first()
+                    ? Utils.createStreamDetails(avatar.get()).first()
                     : forceUploadAvatar && avatar == null
                             ? context.getAvatarStore().retrieveProfileAvatar(account.getSelfRecipientAddress())
                             : null;
@@ -196,7 +194,7 @@ public final class ProfileHelper {
                 final var streamDetails = Utils.createStreamDetails(avatar.get()).first();
 
                 context.getAvatarStore().storeProfileAvatar(account.getSelfRecipientAddress(),
-                        outputStream ->  IOUtils.copyStream(streamDetails.getStream(), outputStream));
+                        outputStream -> IOUtils.copyStream(streamDetails.getStream(), outputStream));
 
             } else {
                 context.getAvatarStore().deleteProfileAvatar(account.getSelfRecipientAddress());

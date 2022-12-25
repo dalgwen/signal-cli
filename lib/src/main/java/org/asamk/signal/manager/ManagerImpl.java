@@ -16,9 +16,12 @@
  */
 package org.asamk.signal.manager;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,6 +40,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.asamk.signal.manager.api.AlreadyReceivingException;
 import org.asamk.signal.manager.api.AttachmentInvalidException;
 import org.asamk.signal.manager.api.Configuration;
 import org.asamk.signal.manager.api.Device;
@@ -101,9 +105,6 @@ import org.whispersystems.signalservice.api.util.StreamDetails;
 import org.whispersystems.signalservice.internal.util.Hex;
 import org.whispersystems.signalservice.internal.util.Util;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 
 class ManagerImpl implements Manager {
@@ -518,8 +519,9 @@ class ManagerImpl implements Manager {
             throws AttachmentInvalidException, IOException, UnregisteredRecipientException, InvalidStickerException {
         if (message.messageText().length() > 2000) {
             final var messageBytes = message.messageText().getBytes(StandardCharsets.UTF_8);
-            final var textAttachment = AttachmentUtils.createAttachmentStream(new StreamDetails(new ByteArrayInputStream(
-                    messageBytes), MimeUtils.LONG_TEXT, messageBytes.length), Optional.empty());
+            final var textAttachment = AttachmentUtils.createAttachmentStream(
+                    new StreamDetails(new ByteArrayInputStream(messageBytes), MimeUtils.LONG_TEXT, messageBytes.length),
+                    Optional.empty());
             messageBuilder.withBody(message.messageText().substring(0, 2000));
             messageBuilder.withAttachment(textAttachment);
         } else {
@@ -578,8 +580,8 @@ class ManagerImpl implements Manager {
             final var authorServiceId = context.getRecipientHelper()
                     .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(storyReply.author()))
                     .getServiceId();
-            messageBuilder.withStoryContext(new SignalServiceDataMessage.StoryContext(authorServiceId,
-                    storyReply.timestamp()));
+            messageBuilder.withStoryContext(
+                    new SignalServiceDataMessage.StoryContext(authorServiceId, storyReply.timestamp()));
         }
     }
 
@@ -619,17 +621,17 @@ class ManagerImpl implements Manager {
 
     @Override
     public SendMessageResults sendMessageReaction(String emoji, boolean remove, RecipientIdentifier.Single targetAuthor,
-            long targetSentTimestamp, Set<RecipientIdentifier> recipients, final boolean isStory) throws IOException, NotAGroupMemberException,
-            GroupNotFoundException, GroupSendingNotAllowedException, UnregisteredRecipientException {
+            long targetSentTimestamp, Set<RecipientIdentifier> recipients, final boolean isStory)
+            throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException,
+            UnregisteredRecipientException {
         var targetAuthorRecipientId = context.getRecipientHelper().resolveRecipient(targetAuthor);
-        final var authorServiceId = context.getRecipientHelper()
-                .resolveSignalServiceAddress(targetAuthorRecipientId)
+        final var authorServiceId = context.getRecipientHelper().resolveSignalServiceAddress(targetAuthorRecipientId)
                 .getServiceId();
         var reaction = new SignalServiceDataMessage.Reaction(emoji, remove, authorServiceId, targetSentTimestamp);
         final var messageBuilder = SignalServiceDataMessage.newBuilder().withReaction(reaction);
         if (isStory) {
-            messageBuilder.withStoryContext(new SignalServiceDataMessage.StoryContext(authorServiceId,
-                    targetSentTimestamp));
+            messageBuilder
+                    .withStoryContext(new SignalServiceDataMessage.StoryContext(authorServiceId, targetSentTimestamp));
         }
         return sendMessage(messageBuilder, recipients);
     }
@@ -890,15 +892,13 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public void receiveMessages(
-            Optional<Duration> timeout, Optional<Integer> maxMessages, ReceiveMessageHandler handler
-    ) throws IOException, AlreadyReceivingException {
+    public void receiveMessages(Optional<Duration> timeout, Optional<Integer> maxMessages,
+            ReceiveMessageHandler handler) throws IOException, AlreadyReceivingException {
         receiveMessages(timeout.orElse(Duration.ofMinutes(1)), timeout.isPresent(), maxMessages.orElse(null), handler);
     }
 
-    private void receiveMessages(
-            Duration timeout, boolean returnOnTimeout, Integer maxMessages, ReceiveMessageHandler handler
-    ) throws IOException, AlreadyReceivingException {
+    private void receiveMessages(Duration timeout, boolean returnOnTimeout, Integer maxMessages,
+            ReceiveMessageHandler handler) throws IOException, AlreadyReceivingException {
         synchronized (messageHandlers) {
             if (isReceiving()) {
                 throw new AlreadyReceivingException("Already receiving message.");

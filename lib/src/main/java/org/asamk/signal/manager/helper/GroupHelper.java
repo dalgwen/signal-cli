@@ -1,6 +1,5 @@
 package org.asamk.signal.manager.helper;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -221,7 +220,7 @@ public class GroupHelper {
                 group = getGroup(groupId, true);
                 return updateGroupV2((GroupInfoV2) group, name, description, members, removeMembers, admins,
                         removeAdmins, banMembers, unbanMembers, resetGroupLink, groupLinkState, addMemberPermission,
-                        editDetailsPermission, avatarBytes expirationTimer, isAnnouncementGroup);
+                        editDetailsPermission, avatarBytes, expirationTimer, isAnnouncementGroup);
             }
         }
 
@@ -490,8 +489,7 @@ public class GroupHelper {
         }
 
         if (avatarFile != null) {
-            context.getAvatarStore().storeGroupAvatar(g.getGroupId(),
-                    outputStream -> outputStream.write(avatarFile));
+            context.getAvatarStore().storeGroupAvatar(g.getGroupId(), outputStream -> outputStream.write(avatarFile));
         }
     }
 

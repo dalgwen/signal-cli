@@ -1,12 +1,11 @@
 package org.asamk.signal.manager.api;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.List;
 import java.util.Optional;
 
 import org.asamk.signal.manager.api.RecipientIdentifier.Single;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Message {
 
@@ -16,10 +15,13 @@ public class Message {
     private final Optional<Quote> quote;
     private final Optional<Sticker> sticker;
     private final List<Preview> previews;
-    private final Optional<StoryReply> storyReply
+    private final Optional<StoryReply> storyReply;
 
-    public Message(@JsonProperty("messageText") String messageText, @JsonProperty("attachments") List<String> attachments, @JsonProperty("mentions") List<Mention> mentions, @JsonProperty("quote") Optional<Quote> quote,
-            @JsonProperty("sticker") Optional<Sticker> sticker, @JsonProperty("previews") List<Preview> previews, Optional<StoryReply> storyReply) {
+    public Message(@JsonProperty("messageText") String messageText,
+            @JsonProperty("attachments") List<String> attachments, @JsonProperty("mentions") List<Mention> mentions,
+            @JsonProperty("quote") Optional<Quote> quote, @JsonProperty("sticker") Optional<Sticker> sticker,
+            @JsonProperty("previews") List<Preview> previews,
+            @JsonProperty("storyReply") Optional<StoryReply> storyReply) {
         super();
         this.messageText = messageText;
         this.attachments = attachments;
@@ -27,7 +29,7 @@ public class Message {
         this.quote = quote;
         this.sticker = sticker;
         this.previews = previews;
-        this.storyReply = storyReply;get and set
+        this.storyReply = storyReply;
     }
 
     public static class Mention {
@@ -35,7 +37,8 @@ public class Message {
         private final int start;
         private final int length;
 
-        public Mention(@JsonProperty("recipient") Single recipient, @JsonProperty("start") int start, @JsonProperty("length") int length) {
+        public Mention(@JsonProperty("recipient") Single recipient, @JsonProperty("start") int start,
+                @JsonProperty("length") int length) {
             super();
             this.recipient = recipient;
             this.start = start;
@@ -61,7 +64,8 @@ public class Message {
         private final String message;
         private final List<Mention> mentions;
 
-        public Quote(@JsonProperty("timestamp") long timestamp, @JsonProperty("author") Single author, @JsonProperty("message") String message, @JsonProperty("mentions") List<Mention> mentions) {
+        public Quote(@JsonProperty("timestamp") long timestamp, @JsonProperty("author") Single author,
+                @JsonProperty("message") String message, @JsonProperty("mentions") List<Mention> mentions) {
             super();
             this.timestamp = timestamp;
             this.author = author;
@@ -111,7 +115,8 @@ public class Message {
         private final String description;
         private final Optional<String> image;
 
-        public Preview(@JsonProperty("url") String url, @JsonProperty("title") String title, @JsonProperty("description") String description, @JsonProperty("image") Optional<String> image) {
+        public Preview(@JsonProperty("url") String url, @JsonProperty("title") String title,
+                @JsonProperty("description") String description, @JsonProperty("image") Optional<String> image) {
             super();
             this.url = url;
             this.title = title;
@@ -136,8 +141,42 @@ public class Message {
         }
 
     }
-    
-    public record StoryReply(long timestamp, RecipientIdentifier.Single author) {}
+
+    public static class StoryReply {
+        long timestamp;
+        RecipientIdentifier.Single author;
+
+        public StoryReply(@JsonProperty("timestamp") long timestamp, @JsonProperty("author") Single author) {
+            super();
+            this.timestamp = timestamp;
+            this.author = author;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
+
+        public long timestamp() {
+            return timestamp;
+        }
+
+        public void setTimestamp(long timestamp) {
+            this.timestamp = timestamp;
+        }
+
+        public RecipientIdentifier.Single getAuthor() {
+            return author;
+        }
+
+        public RecipientIdentifier.Single author() {
+            return author;
+        }
+
+        public void setAuthor(RecipientIdentifier.Single author) {
+            this.author = author;
+        }
+
+    }
 
     public String messageText() {
         return messageText;
@@ -161,5 +200,13 @@ public class Message {
 
     public List<Preview> previews() {
         return previews;
+    }
+
+    public Optional<StoryReply> getStoryReply() {
+        return storyReply;
+    }
+
+    public Optional<StoryReply> storyReply() {
+        return storyReply;
     }
 }

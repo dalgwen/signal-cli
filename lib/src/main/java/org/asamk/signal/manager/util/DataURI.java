@@ -17,6 +17,8 @@ public class DataURI {
     private final Map<String, String> parameter;
     private final byte[] data;
 
+    public static final String DEFAULT_TYPE = "text/plain";
+
     public DataURI(@JsonProperty("mediaType") String mediaType,
             @JsonProperty("parameter") Map<String, String> parameter, @JsonProperty("data") byte[] data) {
         super();

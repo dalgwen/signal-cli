@@ -263,9 +263,7 @@ public class AccountDatabase extends Database {
         if (oldVersion < 11) {
             logger.debug("Updating database: Adding pni field");
             try (final var statement = connection.createStatement()) {
-                statement.executeUpdate("""
-                                        ALTER TABLE recipient ADD COLUMN pni BLOB;
-                                        """);
+                statement.executeUpdate("ALTER TABLE recipient ADD COLUMN pni BLOB;");
             }
         }
     }

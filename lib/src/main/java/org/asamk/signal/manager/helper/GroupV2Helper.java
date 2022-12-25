@@ -1,9 +1,6 @@
 package org.asamk.signal.manager.helper;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -133,7 +130,7 @@ class GroupV2Helper {
         return partialDecryptedGroup.getRevision();
     }
 
-    Pair<GroupInfoV2, DecryptedGroup> createGroup(String name, Set<RecipientId> members, byte[] avatarFile)
+    Pair<GroupInfoV2, DecryptedGroup> createGroup(String name, Set<RecipientId> members, byte[] avatarBytes)
             throws IOException {
         final var newGroup = buildNewGroup(name, members, avatarBytes);
         if (newGroup == null) {
@@ -187,9 +184,8 @@ class GroupV2Helper {
                 self, candidates, Member.Role.DEFAULT, 0);
     }
 
-    Pair<DecryptedGroup, GroupChange> updateGroup(
-            GroupInfoV2 groupInfoV2, String name, String description, byte[] avatarFile
-    ) throws IOException {
+    Pair<DecryptedGroup, GroupChange> updateGroup(GroupInfoV2 groupInfoV2, String name, String description,
+            byte[] avatarFile) throws IOException {
         final var groupSecretParams = GroupSecretParams.deriveFromMasterKey(groupInfoV2.getMasterKey());
         var groupOperations = dependencies.getGroupsV2Operations().forGroup(groupSecretParams);
 
