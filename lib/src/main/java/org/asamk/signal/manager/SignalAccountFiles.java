@@ -31,12 +31,8 @@ public class SignalAccountFiles {
     private final Settings settings;
     private final AccountsStore accountsStore;
 
-    public SignalAccountFiles(
-            final File settingsPath,
-            final ServiceEnvironment serviceEnvironment,
-            final String userAgent,
-            final Settings settings
-    ) throws IOException {
+    public SignalAccountFiles(final File settingsPath, final ServiceEnvironment serviceEnvironment,
+            final String userAgent, final Settings settings) throws IOException {
         this.pathConfig = PathConfig.createDefault(settingsPath);
         this.serviceEnvironment = serviceEnvironment;
         this.serviceEnvironmentConfig = ServiceConfig.getServiceEnvironmentConfig(this.serviceEnvironment, userAgent);
@@ -53,6 +49,10 @@ public class SignalAccountFiles {
                 return null;
             }
         });
+    }
+
+    public AccountsStore getAccountStore() {
+        return accountsStore;
     }
 
     public Set<String> getAllLocalAccountNumbers() throws IOException {
