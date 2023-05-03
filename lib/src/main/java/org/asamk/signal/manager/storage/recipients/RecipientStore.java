@@ -51,10 +51,12 @@ public class RecipientStore
         try (final var statement = connection.createStatement()) {
             statement.executeUpdate("                    CREATE TABLE recipient (\n"
                     + "                      _id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
-                    + "                      number TEXT UNIQUE,\n" + "                      uuid BLOB UNIQUE,\n"
-                    + "                      pni BLOB UNIQUE,\n" + "                      profile_key BLOB,\n"
-                    + "                      profile_key_credential BLOB,\n" + "\n"
-                    + "                      given_name TEXT,\n" + "                      family_name TEXT,\n"
+                    + "                      number TEXT UNIQUE,\n"
+                    + "                      username TEXT UNIQUE,\n"
+                    + "                      uuid BLOB UNIQUE,\n"
+                    + "                      pni BLOB UNIQUE,\n"
+                    + "                      profile_key BLOB,\n"
+                    + "                      given_name TEXTn" + "                      family_name TEXT,\n"
                     + "                      color TEXT,\n" + "\n"
                     + "                      expiration_time INTEGER NOT NULL DEFAULT 0,\n"
                     + "                      blocked INTEGER NOT NULL DEFAULT FALSE,\n"
@@ -80,7 +82,10 @@ public class RecipientStore
     }
 
     public RecipientAddress resolveRecipientAddress(RecipientId recipientId) {
-        final var sql = String.format("SELECT r.number, r.uuid, r.pni \n" + " FROM %s r\n" + " WHERE r._id = ?\n",
+        final var sql = String.format(
+        "SELECT r.number, r.uuid, r.pni, r.username \n"
+        + " FROM %s r\n"
+        + " WHERE r._id = ?\n",
                 TABLE_RECIPIENT);
         try (final var connection = database.getConnection()) {
             try (final var statement = connection.prepareStatement(sql)) {
@@ -167,8 +172,9 @@ public class RecipientStore
         return new RecipientId(recipientId, this);
     }
 
-    public RecipientId resolveRecipient(final String number, Supplier<ServiceId> serviceIdSupplier)
-            throws UnregisteredRecipientException {
+    public RecipientId resolveRecipientByNumber(
+            final String number, Supplier<ServiceId> serviceIdSupplier
+    ) throws UnregisteredRecipientException {
         final Optional<RecipientWithAddress> byNumber;
         try (final var connection = database.getConnection()) {
             byNumber = findByNumber(connection, number);
@@ -185,6 +191,28 @@ public class RecipientStore
             return resolveRecipient(serviceId);
         }
         return byNumber.get().id;
+    }
+
+    public RecipientId resolveRecipientByUsername(
+            final String username, Supplier<ServiceId> serviceIdSupplier
+    ) throws UnregisteredRecipientException {
+        final Optional<RecipientWithAddress> byUsername;
+        try (final var connection = database.getConnection()) {
+            byUsername = findByUsername(connection, username);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed read from recipient store", e);
+        }
+        if (byUsername.isEmpty() || byUsername.get().address().serviceId().isEmpty()) {
+            final var serviceId = serviceIdSupplier.get();
+            if (serviceId == null) {
+                throw new UnregisteredRecipientException(new org.asamk.signal.manager.api.RecipientAddress(null,
+                        null,
+                        username));
+            }
+
+            return resolveRecipient(serviceId);
+        }
+        return byUsername.get().id();
     }
 
     @Override
@@ -220,7 +248,21 @@ public class RecipientStore
     public RecipientId resolveRecipientTrusted(final Optional<ACI> aci, final Optional<PNI> pni,
             final Optional<String> number) {
         final var serviceId = aci.map(a -> (ServiceId) a).or(() -> pni);
-        return resolveRecipientTrusted(new RecipientAddress(serviceId, pni, number), false);
+        return resolveRecipientTrusted(new RecipientAddress(serviceId, pni, number, Optional.empty()), false);
+    }
+
+    @Override
+    public RecipientId resolveRecipientTrusted(final ServiceId serviceId, final String username) {
+        return resolveRecipientTrusted(new RecipientAddress(serviceId, null, null, username), false);
+    }
+
+    public RecipientId resolveRecipientTrusted(
+            final ACI aci, final String username
+    ) {
+        return resolveRecipientTrusted(new RecipientAddress(Optional.of(aci),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.of(username)), false);
     }
 
     @Override
@@ -276,7 +318,7 @@ public class RecipientStore
             sqlWhere.add("r._id IN (" + recipientIdsCommaSeparated + ")");
         }
         final var sql = String.format("                SELECT r._id,\n"
-                + "                       r.number, r.uuid, r.pni\n"
+                + "                       r.number, r.uuid, r.pni, r.username\n"
                 + "                       r.profile_key, r.profile_key_credential,\n"
                 + "                       r.given_name, r.family_name, r.expiration_time, r.profile_sharing, r.color, r.blocked, r.archived,\n"
                 + "                       r.profile_last_update_timestamp, r.profile_given_name, r.profile_family_name, r.profile_about, r.profile_about_emoji, r.profile_avatar_url_path, r.profile_mobile_coin_address, r.profile_unidentified_access_mode, r.profile_capabilities\n"
@@ -652,13 +694,14 @@ public class RecipientStore
     private void updateRecipientAddress(Connection connection, RecipientId recipientId, final RecipientAddress address)
             throws SQLException {
         final var sql = String.format("                UPDATE %s\n"
-                + "                SET number = ?, uuid = ?, pni = ?\n" + "                WHERE _id = ?\n",
+                + "                SET number = ?, uuid = ?, pni = ?, username= ?\n" + "                WHERE _id = ?\n",
                 TABLE_RECIPIENT);
         try (final var statement = connection.prepareStatement(sql)) {
             statement.setString(1, address.number().orElse(null));
             statement.setBytes(2, address.serviceId().map(ServiceId::uuid).map(UuidUtil::toByteArray).orElse(null));
             statement.setBytes(3, address.pni().map(PNI::uuid).map(UuidUtil::toByteArray).orElse(null));
-            statement.setLong(4, recipientId.id());
+            statement.setString(4, address.username().orElse(null));
+            statement.setLong(5, recipientId.id());
             statement.executeUpdate();
         }
     }
@@ -704,7 +747,7 @@ public class RecipientStore
 
     private Optional<RecipientWithAddress> findByNumber(final Connection connection, final String number)
             throws SQLException {
-        final var sql = String.format("                SELECT r._id, r.number, r.uuid, r.pni\n"
+        final var sql = String.format("                SELECT r._id, r.number, r.uuid, r.pni, r.username\n"
                 + "                FROM %s r\n" + "                WHERE r.number = ?\n LIMIT 1", TABLE_RECIPIENT);
         try (final var statement = connection.prepareStatement(sql)) {
             statement.setString(1, number);
@@ -712,26 +755,47 @@ public class RecipientStore
         }
     }
 
-    private Optional<RecipientWithAddress> findByServiceId(final Connection connection, final ServiceId serviceId)
-            throws SQLException {
-        final var sql = String.format("                SELECT r._id, r.number, r.uuid, r.pni\n"
-                + "                FROM %s r\n" + "                WHERE r.uuid = ? OR r.pni = ?\nLIMIT 1",
-                TABLE_RECIPIENT);
+    private Optional<RecipientWithAddress> findByUsername(
+            final Connection connection, final String username
+    ) throws SQLException {
+        final var sql = """
+                        SELECT r._id, r.number, r.uuid, r.pni, r.username
+                        FROM %s r
+                        WHERE r.username = ?
+                        LIMIT 1
+                        """.formatted(TABLE_RECIPIENT);
         try (final var statement = connection.prepareStatement(sql)) {
-            statement.setBytes(1, UuidUtil.toByteArray(serviceId.uuid()));
+            statement.setString(1, username);
             return Utils.executeQueryForOptional(statement, this::getRecipientWithAddressFromResultSet);
         }
     }
 
+    private Optional<RecipientWithAddress> findByServiceId(final Connection connection, final ServiceId serviceId)
+            throws SQLException {
+        final var sql = String.format("                SELECT r._id, r.number, r.uuid, r.pni, r.username\n"
+                + "                FROM %s r\n" + "                WHERE r.uuid = ? OR r.pni = ?\nLIMIT 1",
+                TABLE_RECIPIENT);
+                        FROM %s r
+                        WHERE r.username = ?
+                        LIMIT 1
+                        """.formatted(TABLE_RECIPIENT);
+        try (final var statement = connection.prepareStatement(sql)) {
+            statement.setString(1, username);
+            return Utils.executeQueryForOptional(statement, this::getRecipientWithAddressFromResultSet);
+        }
+    }
+
+
     private Set<RecipientWithAddress> findAllByAddress(final Connection connection, final RecipientAddress address)
             throws SQLException {
-        final var sql = String.format("SELECT r._id, r.number, r.uuid, r.pni " + " FROM %s r "
-                + " WHERE r.uuid = ?1 OR r.pni = ?1 OR " + " r.uuid = ?2 OR r.pni = ?2 OR " + " r.number = ?3",
+        final var sql = String.format("SELECT r._id, r.number, r.uuid, r.pni, r.username " + " FROM %s r "
+                + " WHERE r.uuid = ?1 OR r.pni = ?1 OR " + " r.uuid = ?2 OR r.pni = ?2 OR " + " r.number = ?3 OR r.username = ?4",
                 TABLE_RECIPIENT);
         try (final var statement = connection.prepareStatement(sql)) {
             statement.setBytes(1, address.serviceId().map(ServiceId::uuid).map(UuidUtil::toByteArray).orElse(null));
             statement.setBytes(2, address.pni().map(ServiceId::uuid).map(UuidUtil::toByteArray).orElse(null));
             statement.setString(3, address.number().orElse(null));
+            statement.setString(4, address.username().orElse(null));
             return Utils.executeQueryForStream(statement, this::getRecipientWithAddressFromResultSet)
                     .collect(Collectors.toSet());
         }
@@ -784,7 +848,8 @@ public class RecipientStore
         final var serviceId = Optional.ofNullable(resultSet.getBytes("uuid")).map(ServiceId::parseOrNull);
         final var pni = Optional.ofNullable(resultSet.getBytes("pni")).map(PNI::parseOrNull);
         final var number = Optional.ofNullable(resultSet.getString("number"));
-        return new RecipientAddress(serviceId, pni, number);
+        final var username = Optional.ofNullable(resultSet.getString("username"));
+        return new RecipientAddress(serviceId, pni, number, username);
     }
 
     private RecipientId getRecipientIdFromResultSet(ResultSet resultSet) throws SQLException {

@@ -10,6 +10,7 @@ import org.asamk.signal.manager.api.Group;
 import org.asamk.signal.manager.api.Identity;
 import org.asamk.signal.manager.api.InactiveGroupLinkException;
 import org.asamk.signal.manager.api.InvalidDeviceLinkException;
+import org.asamk.signal.manager.api.InvalidUsernameException;
 import org.asamk.signal.manager.api.Message;
 import org.asamk.signal.manager.api.MessageEnvelope;
 import org.asamk.signal.manager.api.NotPrimaryDeviceException;
@@ -152,6 +153,16 @@ public class DbusManagerImpl implements Manager {
     }
 
     @Override
+    public String setUsername(final String username) throws IOException, InvalidUsernameException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void deleteUsername() throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void unregister() throws IOException {
         signal.unregister();
     }
@@ -219,7 +230,15 @@ public class DbusManagerImpl implements Manager {
             throw new UnsupportedOperationException();
         }
         final var group = getRemoteObject(signal.getGroup(groupId.serialize()), Signal.Group.class);
-        group.quitGroup();
+        try {
+            group.quitGroup();
+        } catch (Signal.Error.GroupNotFound e) {
+            throw new GroupNotFoundException(groupId);
+        } catch (Signal.Error.NotAGroupMember e) {
+            throw new NotAGroupMemberException(groupId, group.Get("org.asamk.Signal.Group", "Name"));
+        } catch (Signal.Error.LastGroupAdmin e) {
+            throw new LastGroupAdminException(groupId, group.Get("org.asamk.Signal.Group", "Name"));
+        }
         return new SendGroupMessageResults(0, List.of());
     }
 
@@ -778,6 +797,7 @@ public class DbusManagerImpl implements Manager {
                                 Optional.empty(),
                                 List.of(),
                                 List.of(),
+                                List.of(),
                                 List.of())),
                         Optional.empty(),
                         Optional.empty(),
@@ -850,6 +870,7 @@ public class DbusManagerImpl implements Manager {
                                         getAttachments(extras),
                                         Optional.empty(),
                                         Optional.empty(),
+                                        List.of(),
                                         List.of(),
                                         List.of(),
                                         List.of())),

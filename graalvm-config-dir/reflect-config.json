@@ -79,20 +79,8 @@
   "allDeclaredMethods":true
 },
 {
-  "name":"com.google.protobuf.DescriptorMessageInfoFactory"
-},
-{
-  "name":"com.google.protobuf.ExtensionRegistry"
-},
-{
-  "name":"com.google.protobuf.ExtensionSchemaFull"
-},
-{
   "name":"com.google.protobuf.GeneratedMessageLite",
   "fields":[{"name":"unknownFields"}]
-},
-{
-  "name":"com.google.protobuf.GeneratedMessageV3"
 },
 {
   "name":"com.google.protobuf.Internal$LongList",
@@ -109,17 +97,8 @@
   "allDeclaredConstructors":true
 },
 {
-  "name":"com.google.protobuf.MapFieldSchemaFull"
-},
-{
-  "name":"com.google.protobuf.NewInstanceSchemaFull"
-},
-{
   "name":"com.google.protobuf.PrimitiveNonBoxingCollection",
   "allDeclaredMethods":true
-},
-{
-  "name":"com.google.protobuf.UnknownFieldSetSchema"
 },
 {
   "name":"com.sun.crypto.provider.AESCipher$General",
@@ -466,9 +445,6 @@
   "name":"javax.smartcardio.CardPermission"
 },
 {
-  "name":"libcore.io.Memory"
-},
-{
   "name":"long",
   "allDeclaredMethods":true,
   "allPublicMethods":true
@@ -695,6 +671,13 @@
   "queryAllDeclaredMethods":true,
   "queryAllDeclaredConstructors":true,
   "methods":[{"name":"deviceLinkUri","parameterTypes":[] }]
+},
+{
+  "name":"org.asamk.signal.commands.UpdateAccountCommand$JsonAccountResponse",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[{"name":"username","parameterTypes":[] }]
 },
 {
   "name":"org.asamk.signal.commands.VerifyCommand$VerifyParams",
@@ -981,10 +964,6 @@
     {"name":"positions","parameterTypes":[] }, 
     {"name":"startColor","parameterTypes":[] }
   ]
-},
-{
-  "name":"org.asamk.signal.json.JsonStreamSerializer",
-  "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
   "name":"org.asamk.signal.json.JsonSyncDataMessage",
@@ -1820,9 +1799,6 @@
   "allPublicConstructors":true
 },
 {
-  "name":"org.robolectric.Robolectric"
-},
-{
   "name":"org.signal.cdsi.proto.ClientRequest",
   "fields":[
     {"name":"aciUakPairs_"}, 
@@ -2288,7 +2264,6 @@
   "queryAllDeclaredMethods":true,
   "queryAllDeclaredConstructors":true,
   "methods":[
-    {"name":"getCode","parameterTypes":[] }, 
     {"name":"getNumber","parameterTypes":[] }, 
     {"name":"getRegistrationLock","parameterTypes":[] }
   ]
@@ -2568,6 +2543,12 @@
   "allDeclaredConstructors":true
 },
 {
+  "name":"org.whispersystems.signalservice.internal.push.ConfirmUsernameRequest",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
   "name":"org.whispersystems.signalservice.internal.push.DeviceCode",
   "allDeclaredFields":true,
   "allDeclaredMethods":true,
@@ -2584,6 +2565,13 @@
   "allDeclaredFields":true,
   "allDeclaredMethods":true,
   "allDeclaredConstructors":true
+},
+{
+  "name":"org.whispersystems.signalservice.internal.push.GetAciByUsernameResponse",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
   "name":"org.whispersystems.signalservice.internal.push.GroupMismatchedDevices",
@@ -2713,6 +2701,38 @@
   "allDeclaredConstructors":true
 },
 {
+  "name":"org.whispersystems.signalservice.internal.push.RegistrationSessionMetadataJson",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.String","java.lang.Integer","java.lang.Integer","java.lang.Integer","boolean","java.util.List","boolean"] }]
+},
+{
+  "name":"org.whispersystems.signalservice.internal.push.RegistrationSessionRequestBody",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[
+    {"name":"getAccountAttributes","parameterTypes":[] }, 
+    {"name":"getRecoveryPassword","parameterTypes":[] }, 
+    {"name":"getSessionId","parameterTypes":[] }, 
+    {"name":"getSkipDeviceTransfer","parameterTypes":[] }
+  ]
+},
+{
+  "name":"org.whispersystems.signalservice.internal.push.ReserveUsernameRequest",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true
+},
+{
+  "name":"org.whispersystems.signalservice.internal.push.ReserveUsernameResponse",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
   "name":"org.whispersystems.signalservice.internal.push.SendGroupMessageResponse",
   "allDeclaredFields":true,
   "queryAllDeclaredMethods":true,
@@ -2754,6 +2774,16 @@
     {"name":"thumbnail_"}, 
     {"name":"uploadTimestamp_"}, 
     {"name":"width_"}
+  ]
+},
+{
+  "name":"org.whispersystems.signalservice.internal.push.SignalServiceProtos$BodyRange",
+  "fields":[
+    {"name":"associatedValueCase_"}, 
+    {"name":"associatedValue_"}, 
+    {"name":"bitField0_"}, 
+    {"name":"length_"}, 
+    {"name":"start_"}
   ]
 },
 {
@@ -2884,16 +2914,6 @@
     {"name":"sticker_"}, 
     {"name":"storyContext_"}, 
     {"name":"timestamp_"}
-  ]
-},
-{
-  "name":"org.whispersystems.signalservice.internal.push.SignalServiceProtos$DataMessage$BodyRange",
-  "fields":[
-    {"name":"associatedValueCase_"}, 
-    {"name":"associatedValue_"}, 
-    {"name":"bitField0_"}, 
-    {"name":"length_"}, 
-    {"name":"start_"}
   ]
 },
 {
@@ -3054,6 +3074,7 @@
     {"name":"bitField0_"}, 
     {"name":"content_"}, 
     {"name":"destinationUuid_"}, 
+    {"name":"reportingToken_"}, 
     {"name":"serverGuid_"}, 
     {"name":"serverTimestamp_"}, 
     {"name":"sourceDevice_"}, 
@@ -3181,6 +3202,7 @@
     {"name":"attachmentCase_"}, 
     {"name":"attachment_"}, 
     {"name":"bitField0_"}, 
+    {"name":"bodyRanges_"}, 
     {"name":"group_"}, 
     {"name":"profileKey_"}
   ]
@@ -3190,6 +3212,7 @@
   "fields":[
     {"name":"bitField0_"}, 
     {"name":"blocked_"}, 
+    {"name":"callEvent_"}, 
     {"name":"configuration_"}, 
     {"name":"contacts_"}, 
     {"name":"fetchLatest_"}, 
@@ -3215,6 +3238,18 @@
     {"name":"groupIds_"}, 
     {"name":"numbers_"}, 
     {"name":"uuids_"}
+  ]
+},
+{
+  "name":"org.whispersystems.signalservice.internal.push.SignalServiceProtos$SyncMessage$CallEvent",
+  "fields":[
+    {"name":"bitField0_"}, 
+    {"name":"direction_"}, 
+    {"name":"event_"}, 
+    {"name":"id_"}, 
+    {"name":"peerUuid_"}, 
+    {"name":"timestamp_"}, 
+    {"name":"type_"}
   ]
 },
 {
@@ -3421,6 +3456,33 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
+  "name":"org.whispersystems.signalservice.internal.push.UpdateVerificationSessionRequestBody",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[
+    {"name":"getCaptcha","parameterTypes":[] }, 
+    {"name":"getMcc","parameterTypes":[] }, 
+    {"name":"getMnc","parameterTypes":[] }, 
+    {"name":"getPushChallenge","parameterTypes":[] }, 
+    {"name":"getPushToken","parameterTypes":[] }, 
+    {"name":"getPushTokenType","parameterTypes":[] }
+  ]
+},
+{
+  "name":"org.whispersystems.signalservice.internal.push.VerificationSessionMetadataRequestBody",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "queryAllDeclaredConstructors":true,
+  "methods":[
+    {"name":"getMcc","parameterTypes":[] }, 
+    {"name":"getMnc","parameterTypes":[] }, 
+    {"name":"getNumber","parameterTypes":[] }, 
+    {"name":"getPushToken","parameterTypes":[] }, 
+    {"name":"getPushTokenType","parameterTypes":[] }
+  ]
+},
+{
   "name":"org.whispersystems.signalservice.internal.push.VerifyAccountResponse",
   "allDeclaredFields":true,
   "allDeclaredMethods":true,
@@ -3519,6 +3581,7 @@
   "name":"org.whispersystems.signalservice.internal.storage.protos.ManifestRecord",
   "fields":[
     {"name":"identifiers_"}, 
+    {"name":"sourceDevice_"}, 
     {"name":"version_"}
   ]
 },

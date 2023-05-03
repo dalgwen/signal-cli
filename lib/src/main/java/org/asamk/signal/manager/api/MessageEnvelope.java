@@ -42,7 +42,10 @@ import org.whispersystems.signalservice.api.messages.multidevice.ViewedMessage;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import static org.whispersystems.signalservice.internal.push.SignalServiceProtos.BodyRange;
+
 public class MessageEnvelope {
+
 
     public MessageEnvelope(@JsonProperty("sourceAddress") Optional<RecipientAddress> sourceAddress,
             @JsonProperty("sourceDevice") int sourceDevice, @JsonProperty("timestamp") long timestamp,
@@ -192,6 +195,7 @@ public class MessageEnvelope {
         private final List<SharedContact> sharedContacts;
         private final List<Mention> mentions;
         private final List<Preview> previews;
+        private final List<TextStyle> textStyles;
 
         public Data(@JsonProperty("timestamp") long timestamp,
                 @JsonProperty("groupContext") Optional<GroupContext> groupContext,
@@ -208,7 +212,8 @@ public class MessageEnvelope {
                 @JsonProperty("remoteDeleteId") Optional<Long> remoteDeleteId,
                 @JsonProperty("sticker") Optional<Sticker> sticker,
                 @JsonProperty("sharedContacts") List<SharedContact> sharedContacts,
-                @JsonProperty("mentions") List<Mention> mentions, @JsonProperty("previews") List<Preview> previews) {
+                @JsonProperty("mentions") List<Mention> mentions, @JsonProperty("previews") List<Preview> previews,
+                @JsonProperty("textStyles") List<TextStyle> textStyles) {
             super();
             this.timestamp = timestamp;
             this.groupContext = groupContext;
@@ -230,6 +235,7 @@ public class MessageEnvelope {
             this.sharedContacts = sharedContacts;
             this.mentions = mentions;
             this.previews = previews;
+            this.textStyles = textStyles;
         }
 
         static Data from(final SignalServiceDataMessage dataMessage, RecipientResolver recipientResolver,
@@ -261,6 +267,9 @@ public class MessageEnvelope {
                             .orElse(List.of()),
                     dataMessage.getPreviews().map(a -> a.stream().map(preview -> Preview.from(preview, fileProvider))
                             .collect(Collectors.toList())).orElse(List.of()));
+                            .orElse(List.of()),
+                    dataMessage.getBodyRanges()
+                            .map(a -> a.stream().filter(BodyRange::hasStyle).map(TextStyle::from).toList())
         }
 
         public static class GroupContext {
@@ -396,16 +405,19 @@ public class MessageEnvelope {
             private final Optional<String> text;
             private final List<Mention> mentions;
             private final List<Attachment> attachments;
+            private final List<TextStyle> textStyles;
 
             public Quote(@JsonProperty("id") long id, @JsonProperty("author") RecipientAddress author,
                     @JsonProperty("text") Optional<String> text, @JsonProperty("mentions") List<Mention> mentions,
-                    @JsonProperty("attachments") List<Attachment> attachments) {
+                    @JsonProperty("attachments") List<Attachment> attachments,
+                    @JsonProperty("textStyles") List<TextStyle> textStyles) {
                 super();
                 this.id = id;
                 this.author = author;
                 this.text = text;
                 this.mentions = mentions;
                 this.attachments = attachments;
+                this.textStyles = textStyles;
             }
 
             static Quote from(SignalServiceDataMessage.Quote quote, RecipientResolver recipientResolver,
@@ -420,6 +432,13 @@ public class MessageEnvelope {
                                         .collect(Collectors.toList()),
                         quote.getAttachments() == null ? List.of()
                                 : quote.getAttachments().stream().map(a -> Attachment.from(a, fileProvider))
+                                        .collect(Collectors.toList()),
+                        quote.getBodyRanges() == null
+                                ? List.of()
+                                : quote.getBodyRanges()
+                                        .stream()
+                                        .filter(BodyRange::hasStyle)
+                                        .map(TextStyle::from)
                                         .collect(Collectors.toList()));
             }
 
@@ -1024,6 +1043,33 @@ public class MessageEnvelope {
             static Preview from(SignalServicePreview preview, final AttachmentFileProvider fileProvider) {
                 return new Preview(preview.getTitle(), preview.getDescription(), preview.getDate(), preview.getUrl(),
                         preview.getImage().map(as -> Attachment.from(as, fileProvider)));
+            }
+        }
+
+        public record TextStyle(Style style, int start, int length) {
+
+            public enum Style {
+                NONE,
+                BOLD,
+                ITALIC,
+                SPOILER,
+                STRIKETHROUGH,
+                MONOSPACE;
+
+                static Style from(BodyRange.Style style) {
+                    return switch (style) {
+                        case NONE -> NONE;
+                        case BOLD -> BOLD;
+                        case ITALIC -> ITALIC;
+                        case SPOILER -> SPOILER;
+                        case STRIKETHROUGH -> STRIKETHROUGH;
+                        case MONOSPACE -> MONOSPACE;
+                    };
+                }
+            }
+
+            static TextStyle from(BodyRange bodyRange) {
+                return new TextStyle(Style.from(bodyRange.getStyle()), bodyRange.getStart(), bodyRange.getLength());
             }
 
             public String title() {

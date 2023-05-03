@@ -33,6 +33,10 @@ public interface RecipientIdentifier {
                     return new Uuid(UUID.fromString(identifier));
                 }
 
+                if (identifier.startsWith("u:")) {
+                    return new Username(identifier.substring(2));
+                }
+
                 final var normalizedNumber = PhoneNumberFormatter.formatNumber(identifier, localNumber);
                 if (!normalizedNumber.equals(identifier)) {
                     final Logger logger = LoggerFactory.getLogger(RecipientIdentifier.class);
@@ -49,6 +53,8 @@ public interface RecipientIdentifier {
                 return new Number(address.number().get());
             } else if (address.uuid().isPresent()) {
                 return new Uuid(address.uuid().get());
+            } else if (address.username().isPresent()) {
+                return new Username(address.username().get());
             }
             throw new AssertionError("RecipientAddress without identifier");
         }
@@ -95,6 +101,25 @@ public interface RecipientIdentifier {
         @Override
         public RecipientAddress toPartialRecipientAddress() {
             return new RecipientAddress(null, number);
+        }
+    }
+
+    public static class Username implements Single {
+
+        private final String username;
+        
+        public Username(String username) {
+            this.username = username;
+        }
+
+        @Override
+        public String getIdentifier() {
+            return "u:" + username;
+        }
+
+        @Override
+        public RecipientAddress toPartialRecipientAddress() {
+            return new RecipientAddress(null, null, username);
         }
 
         public String number() {
