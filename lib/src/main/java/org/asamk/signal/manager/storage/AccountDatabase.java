@@ -270,28 +270,20 @@ public class AccountDatabase extends Database {
         if (oldVersion < 12) {
             logger.debug("Updating database: Adding username field");
             try (final var statement = connection.createStatement()) {
-                statement.executeUpdate("""
-                                        ALTER TABLE recipient ADD COLUMN username TEXT;
-                                        """);
+                statement.executeUpdate("ALTER TABLE recipient ADD COLUMN username TEXT;");
             }
         }
         if (oldVersion < 13) {
             logger.debug("Updating database: Cleanup unknown service ids");
             {
-                final var sql = """
-                                DELETE FROM identity AS i
-                                WHERE i.uuid = ?
-                                """;
+                final var sql = "DELETE FROM identity AS i WHERE i.uuid = ?";
                 try (final var statement = connection.prepareStatement(sql)) {
                     statement.setBytes(1, ServiceId.UNKNOWN.toByteArray());
                     statement.executeUpdate();
                 }
             }
             {
-                final var sql = """
-                                DELETE FROM sender_key_shared AS i
-                                WHERE i.uuid = ?
-                                """;
+                final var sql = "DELETE FROM sender_key_shared AS i WHERE i.uuid = ?";
                 try (final var statement = connection.prepareStatement(sql)) {
                     statement.setBytes(1, ServiceId.UNKNOWN.toByteArray());
                     statement.executeUpdate();

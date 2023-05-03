@@ -15,8 +15,8 @@ public class RecipientAddress {
 
     public static final UUID UNKNOWN_UUID = ServiceId.UNKNOWN.uuid();
 
-    public RecipientAddress(@JsonProperty("uuid") Optional<UUID> uuid,
-            @JsonProperty("number") Optional<String> number, Optional<String> username) {
+    public RecipientAddress(@JsonProperty("uuid") Optional<UUID> uuid, @JsonProperty("number") Optional<String> number,
+            Optional<String> username) {
         super();
         Optional<UUID> _uuid = uuid;
 
@@ -34,7 +34,8 @@ public class RecipientAddress {
         this(Optional.ofNullable(uuid), Optional.ofNullable(e164), Optional.empty());
     }
 
-    public RecipientAddress(@JsonProperty("uuid") UUID uuid, @JsonProperty("e164") String e164, @JsonProperty("username") String username) {
+    public RecipientAddress(@JsonProperty("uuid") UUID uuid, @JsonProperty("e164") String e164,
+            @JsonProperty("username") String username) {
         this(Optional.ofNullable(uuid), Optional.ofNullable(e164), Optional.ofNullable(username));
     }
 
@@ -45,7 +46,6 @@ public class RecipientAddress {
     public RecipientAddress(@JsonProperty("uuid") UUID uuid) {
         this(Optional.of(uuid), Optional.empty(), Optional.empty());
     }
-
 
     public String getIdentifier() {
         if (uuid.isPresent()) {
@@ -83,6 +83,10 @@ public class RecipientAddress {
 
     public Optional<String> number() {
         return number;
+    }
+
+    public Optional<String> username() {
+        return username;
     }
 
     public static UUID getUnknownUuid() {

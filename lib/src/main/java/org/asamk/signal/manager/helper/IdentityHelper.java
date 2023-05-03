@@ -1,10 +1,8 @@
 package org.asamk.signal.manager.helper;
 
-import static org.asamk.signal.manager.config.ServiceConfig.capabilities;
-
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 import org.asamk.signal.manager.api.TrustLevel;
 import org.asamk.signal.manager.storage.SignalAccount;
@@ -20,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.messages.SendMessageResult;
 import org.whispersystems.signalservice.api.push.ServiceId;
 
-import java.util.function.BiFunction;
 public class IdentityHelper {
 
     private final static Logger logger = LoggerFactory.getLogger(IdentityHelper.class);
@@ -70,9 +67,7 @@ public class IdentityHelper {
         return fingerprint == null ? null : fingerprint.getScannableFingerprint();
     }
 
-    private Fingerprint computeSafetyNumberFingerprint(
-            final ServiceId serviceId, final IdentityKey theirIdentityKey
-    ) {
+    private Fingerprint computeSafetyNumberFingerprint(final ServiceId serviceId, final IdentityKey theirIdentityKey) {
         final var recipientId = account.getRecipientResolver().resolveRecipient(serviceId);
         final var address = account.getRecipientAddressResolver().resolveRecipientAddress(recipientId);
 
@@ -80,26 +75,19 @@ public class IdentityHelper {
             if (serviceId.isUnknown()) {
                 return null;
             }
-            return Utils.computeSafetyNumberForUuid(account.getAci(),
-                    account.getAciIdentityKeyPair().getPublicKey(),
-                    serviceId,
-                    theirIdentityKey);
+            return Utils.computeSafetyNumberForUuid(account.getAci(), account.getAciIdentityKeyPair().getPublicKey(),
+                    serviceId, theirIdentityKey);
         }
         if (address.number().isEmpty()) {
             return null;
         }
-        return Utils.computeSafetyNumberForNumber(account.getNumber(),
-                account.getAciIdentityKeyPair().getPublicKey(),
-                address.number().get(),
-                theirIdentityKey);
+        return Utils.computeSafetyNumberForNumber(account.getNumber(), account.getAciIdentityKeyPair().getPublicKey(),
+                address.number().get(), theirIdentityKey);
     }
 
-    private boolean trustIdentity(ServiceId serviceId, Function<IdentityKey, Boolean> verifier, TrustLevel trustLevel) {
-            RecipientId recipientId, BiFunction<ServiceId, IdentityKey, Boolean> verifier, TrustLevel trustLevel
-    ) {
-        final var serviceId = account.getRecipientAddressResolver()
-                .resolveRecipientAddress(recipientId)
-                .serviceId()
+    private boolean trustIdentity(RecipientId recipientId, BiFunction<ServiceId, IdentityKey, Boolean> verifier,
+            TrustLevel trustLevel) {
+        final var serviceId = account.getRecipientAddressResolver().resolveRecipientAddress(recipientId).serviceId()
                 .orElse(null);
         if (serviceId == null) {
             return false;

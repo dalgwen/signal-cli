@@ -1,8 +1,5 @@
 package org.asamk.signal.manager.api;
 
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.UUID;
 
 import org.asamk.signal.manager.groups.GroupId;
@@ -10,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.util.PhoneNumberFormatter;
 import org.whispersystems.signalservice.api.util.UuidUtil;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public interface RecipientIdentifier {
 
@@ -102,12 +101,16 @@ public interface RecipientIdentifier {
         public RecipientAddress toPartialRecipientAddress() {
             return new RecipientAddress(null, number);
         }
+
+        public String number() {
+            return number;
+        }
     }
 
     public static class Username implements Single {
 
         private final String username;
-        
+
         public Username(String username) {
             this.username = username;
         }
@@ -122,8 +125,8 @@ public interface RecipientIdentifier {
             return new RecipientAddress(null, null, username);
         }
 
-        public String number() {
-            return number;
+        public String username() {
+            return username;
         }
     }
 

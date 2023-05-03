@@ -15,7 +15,6 @@ public class RecipientAddress {
     private final Optional<String> number;
     private final Optional<String> username;
 
-    @SuppressWarnings("null")
     public RecipientAddress(@JsonProperty("serviceId") Optional<ServiceId> serviceId,
             @JsonProperty("pni") Optional<PNI> pni, @JsonProperty("number") Optional<String> number,
             @JsonProperty("username") Optional<String> username) {
@@ -43,12 +42,11 @@ public class RecipientAddress {
         if (_serviceId.isEmpty() && number.isEmpty()) {
             throw new AssertionError("Must have either a ServiceId or E164 number!");
         }
-
+        
         this.serviceId = _serviceId;
         this.pni = _pni;
         this.number = number;
-        this.username = username;
-
+        this.username = username;        
     }
 
     public RecipientAddress(@JsonProperty("serviceId") Optional<ServiceId> serviceId,
@@ -62,19 +60,12 @@ public class RecipientAddress {
 
     public RecipientAddress(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("pni") PNI pni,
             @JsonProperty("e164") String e164) {
-    }
-    
-    public RecipientAddress(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("pni") PNI pni, @JsonProperty("e164") String e164, @JsonProperty("username") String username) {
-        this(Optional.ofNullable(serviceId),
-                Optional.ofNullable(pni),
-                Optional.ofNullable(e164),
-                Optional.ofNullable(username));
+        this(Optional.ofNullable(serviceId), Optional.ofNullable(pni), Optional.ofNullable(e164), Optional.empty());
     }
 
-    public RecipientAddress(ServiceId serviceId, PNI pni, String e164, String username) {
-        this(Optional.ofNullable(serviceId),
-                Optional.ofNullable(pni),
-                Optional.ofNullable(e164),
+    public RecipientAddress(@JsonProperty("serviceId") ServiceId serviceId, @JsonProperty("pni") PNI pni,
+            @JsonProperty("e164") String e164, @JsonProperty("username") String username) {
+        this(Optional.ofNullable(serviceId), Optional.ofNullable(pni), Optional.ofNullable(e164),
                 Optional.ofNullable(username));
     }
 
@@ -94,8 +85,7 @@ public class RecipientAddress {
         return new RecipientAddress(
                 (this.serviceId.isEmpty() || this.isServiceIdPNI() || this.serviceId.equals(address.pni))
                         && !address.isServiceIdPNI() ? address.serviceId : this.serviceId,
-                address.pni.or(this::pni), address.number.or(this::number),
-                address.username.or(this::username));
+                address.pni.or(this::pni), address.number.or(this::number), address.username.or(this::username));
     }
 
     public RecipientAddress removeIdentifiersFrom(RecipientAddress address) {
@@ -140,8 +130,7 @@ public class RecipientAddress {
     }
 
     public boolean hasSingleIdentifier() {
-        final var identifiersCount = serviceId().map(s -> 1).orElse(0)
-                + number().map(s -> 1).orElse(0)
+        final var identifiersCount = serviceId().map(s -> 1).orElse(0) + number().map(s -> 1).orElse(0)
                 + username().map(s -> 1).orElse(0);
         return identifiersCount == 1;
     }
@@ -154,15 +143,25 @@ public class RecipientAddress {
     }
 
     public boolean hasAdditionalIdentifiersThan(RecipientAddress address) {
-        return (serviceId.isPresent() && (address.serviceId.isEmpty()
-                || (!address.serviceId.equals(serviceId) && !address.pni.equals(serviceId))))
-                || (pni.isPresent() && !address.serviceId.equals(pni)
-                        && (address.pni.isEmpty() || !address.pni.equals(pni)))
-                || (number.isPresent() && (address.number.isEmpty() || !address.number.equals(number)));
+        return (
+                serviceId.isPresent() && (
+                        address.serviceId.isEmpty() || (
+                                !address.serviceId.equals(serviceId) && !address.pni.equals(serviceId)
+                        )
+                )
+        ) || (
+                pni.isPresent() && !address.serviceId.equals(pni) && (
+                        address.pni.isEmpty() || !address.pni.equals(pni)
+                )
+        ) || (
+                number.isPresent() && (
+                        address.number.isEmpty() || !address.number.equals(number)
+                )
         ) || (
                 username.isPresent() && (
                         address.username.isEmpty() || !address.username.equals(username)
                 )
+        );
     }
 
     public boolean hasOnlyPniAndNumber() {
@@ -187,5 +186,9 @@ public class RecipientAddress {
 
     public Optional<String> number() {
         return number;
+    }
+
+    public Optional<String> username() {
+        return username;
     }
 }

@@ -16,8 +16,6 @@
  */
 package org.asamk.signal.manager;
 
-import static org.asamk.signal.manager.config.ServiceConfig.capabilities;
-
 import java.io.IOException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;

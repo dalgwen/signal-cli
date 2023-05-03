@@ -560,8 +560,7 @@ class ManagerImpl implements Manager {
                             .resolveSignalServiceAddress(context.getRecipientHelper().resolveRecipient(quote.author()))
                             .getServiceId(),
                     quote.message(), List.of(), resolveMentions(quote.mentions()),
-                    SignalServiceDataMessage.Quote.Type.NORMAL,
-                    List.of()));
+                    SignalServiceDataMessage.Quote.Type.NORMAL, List.of()));
         }
         if (message.sticker().isPresent()) {
             final var sticker = message.sticker().get();
@@ -619,22 +618,23 @@ class ManagerImpl implements Manager {
     }
 
     @Override
-    public SendMessageResults sendRemoteDeleteMessage(
-            long targetSentTimestamp, Set<RecipientIdentifier> recipients
-    ) throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
+    public SendMessageResults sendRemoteDeleteMessage(long targetSentTimestamp, Set<RecipientIdentifier> recipients)
+            throws IOException, NotAGroupMemberException, GroupNotFoundException, GroupSendingNotAllowedException {
         var delete = new SignalServiceDataMessage.RemoteDelete(targetSentTimestamp);
         final var messageBuilder = SignalServiceDataMessage.newBuilder().withRemoteDelete(delete);
         for (final var recipient : recipients) {
-            if (recipient instanceof RecipientIdentifier.Uuid u) {
-                account.getMessageSendLogStore()
-                        .deleteEntryForRecipientNonGroup(targetSentTimestamp, ServiceId.from(u.uuid()));
-            } else if (recipient instanceof RecipientIdentifier.Single r) {
+            if (recipient instanceof RecipientIdentifier.Uuid) {
+                RecipientIdentifier.Uuid u = (RecipientIdentifier.Uuid) recipient;
+                account.getMessageSendLogStore().deleteEntryForRecipientNonGroup(targetSentTimestamp,
+                        ServiceId.from(u.uuid()));
+            } else if (recipient instanceof RecipientIdentifier.Single) {
+                RecipientIdentifier.Single r = (RecipientIdentifier.Single) recipient;
                 try {
                     final var recipientId = context.getRecipientHelper().resolveRecipient(r);
                     final var address = account.getRecipientAddressResolver().resolveRecipientAddress(recipientId);
                     if (address.serviceId().isPresent()) {
-                        account.getMessageSendLogStore()
-                                .deleteEntryForRecipientNonGroup(targetSentTimestamp, address.serviceId().get());
+                        account.getMessageSendLogStore().deleteEntryForRecipientNonGroup(targetSentTimestamp,
+                                address.serviceId().get());
                     }
                 } catch (UnregisteredRecipientException ignored) {
                 }
@@ -694,7 +694,7 @@ class ManagerImpl implements Manager {
                     continue;
                 }
                 final var serviceId = context.getAccount().getRecipientAddressResolver()
-                        .resolveRecipientAddress(recipientId).getServiceId();
+                        .resolveRecipientAddress(recipientId).serviceId();
                 if (serviceId.isPresent()) {
                     account.getAciSessionStore().deleteAllSessions(serviceId.get());
                 }

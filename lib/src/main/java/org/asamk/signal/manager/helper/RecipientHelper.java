@@ -1,7 +1,6 @@
 package org.asamk.signal.manager.helper;
 
 import java.io.IOException;
-import java.security.SignatureException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -82,10 +81,13 @@ public class RecipientHelper {
         return recipientIds;
     }
 
-    public RecipientId resolveRecipient(final RecipientIdentifier.Single recipient) throws UnregisteredRecipientException {
-        if (recipient instanceof RecipientIdentifier.Uuid uuidRecipient) {
+    public RecipientId resolveRecipient(final RecipientIdentifier.Single recipient)
+            throws UnregisteredRecipientException {
+        if (recipient instanceof RecipientIdentifier.Uuid) {
+            RecipientIdentifier.Uuid uuidRecipient = (RecipientIdentifier.Uuid) recipient;
             return account.getRecipientResolver().resolveRecipient(ServiceId.from(uuidRecipient.uuid()));
-        } else if (recipient instanceof RecipientIdentifier.Number numberRecipient) {
+        } else if (recipient instanceof RecipientIdentifier.Number) {
+            RecipientIdentifier.Number numberRecipient = (RecipientIdentifier.Number) recipient;
             final var number = numberRecipient.number();
             return account.getRecipientStore().resolveRecipientByNumber(number, () -> {
                 try {
@@ -94,7 +96,8 @@ public class RecipientHelper {
                     return null;
                 }
             });
-        } else if (recipient instanceof RecipientIdentifier.Username usernameRecipient) {
+        } else if (recipient instanceof RecipientIdentifier.Username) {
+            RecipientIdentifier.Username usernameRecipient = (RecipientIdentifier.Username) recipient;
             final var username = usernameRecipient.username();
             return account.getRecipientStore().resolveRecipientByUsername(username, () -> {
                 try {
@@ -137,7 +140,8 @@ public class RecipientHelper {
         return registeredUsers;
     }
 
-    private ServiceId getRegisteredUserByNumber(final String number) throws IOException, UnregisteredRecipientException {
+    private ServiceId getRegisteredUserByNumber(final String number)
+            throws IOException, UnregisteredRecipientException {
         final Map<String, RegisteredUser> aciMap;
         try {
             aciMap = getRegisteredUsers(Set.of(number));
