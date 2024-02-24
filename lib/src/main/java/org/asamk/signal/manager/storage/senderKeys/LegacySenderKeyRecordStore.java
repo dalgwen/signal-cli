@@ -80,7 +80,7 @@ public class LegacySenderKeyRecordStore {
                 .map(matcher -> {
                     final var recipientId = resolver.resolveRecipient(Long.parseLong(matcher.group(1)));
                     if (recipientId == null) {
-                        return Optional.empty();
+                        return Optional.<Key>empty();
                     }
                     return Optional.of(new Key(recipientId, Integer.parseInt(matcher.group(2)), UUID.fromString(matcher.group(3))));
                 })

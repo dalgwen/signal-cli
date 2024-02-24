@@ -226,7 +226,7 @@ public class SendHelper {
     ) {
         final var result = handleSendMessage(recipientId,
                 (messageSender, address, unidentifiedAccess, includePniSignature) -> messageSender.sendTyping(List.of(
-                        address), List.of(unidentifiedAccess), message, null).getFirst());
+                        address), List.of(unidentifiedAccess), message, null).get(0));
         handleSendMessageResult(result);
         return result;
     }

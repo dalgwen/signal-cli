@@ -81,9 +81,9 @@ public class LegacySessionStore {
                 .map(matcher -> {
                     final var recipientId = resolver.resolveRecipient(Long.parseLong(matcher.group(1)));
                     if (recipientId == null) {
-                        return Optional.empty();
+                        return Optional.<Key>empty();
                     }
-                    return Optional.of(new Key(recipientId, Integer.parseInt(matcher.group(2))));
+                    return Optional.<Key>of(new Key(recipientId, Integer.parseInt(matcher.group(2))));
                 })
                 .filter(Optional::isPresent)
                 .map(Optional::get)
