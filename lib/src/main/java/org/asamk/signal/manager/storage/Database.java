@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import org.slf4j.Logger;
 import org.sqlite.SQLiteConfig;
+import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
 import java.sql.Connection;
@@ -95,12 +96,15 @@ public abstract class Database implements AutoCloseable {
         sqliteConfig.setTransactionMode(SQLiteConfig.TransactionMode.IMMEDIATE);
 
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:sqlite:" + databaseFile + "?foreign_keys=ON&journal_mode=wal");
+        SQLiteDataSource dataSource = new SQLiteDataSource(sqliteConfig);
+        dataSource.setUrl("jdbc:sqlite:" + databaseFile + "?foreign_keys=ON&journal_mode=wal");
+        config.setDataSource(dataSource);
         config.setDataSourceProperties(sqliteConfig.toProperties());
         config.setMinimumIdle(1);
         config.setConnectionTimeout(90_000);
         config.setMaximumPoolSize(50);
         config.setMaxLifetime(0);
+        config.setConnectionInitSql("PRAGMA foreign_keys=ON");
         return new HikariDataSource(config);
     }
 }
