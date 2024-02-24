@@ -15,12 +15,12 @@ public class LegacyStickerStore {
             var packId = StickerPackId.deserialize(Base64.getDecoder().decode(s.packId));
             if (packIds.contains(packId)) {
                 // Remove legacy duplicate packIds ...
-                return Optional.empty();
+                return Optional.<StickerPack>empty();
             }
             packIds.add(packId);
             var packKey = Base64.getDecoder().decode(s.packKey);
             var installed = s.installed;
-            return Optional.of(new StickerPack(-1, packId, packKey, installed));
+            return Optional.<StickerPack>of(new StickerPack(-1, packId, packKey, installed));
         }).filter(Optional::isPresent).map(Optional::get).toList();
 
         stickerStore.addLegacyStickers(stickers);

@@ -1107,7 +1107,7 @@ public class ManagerImpl implements Manager {
         if (receiveThread != null || isReceivingSynchronous) {
             return;
         }
-        receiveThread = Thread.ofPlatform().name("receive-" + threadNumber.getAndIncrement()).start(() -> {
+        receiveThread = new Thread(() -> {
             logger.debug("Starting receiving messages");
             context.getReceiveHelper().receiveMessagesContinuously(this::passReceivedMessageToHandlers);
             logger.debug("Finished receiving messages");
@@ -1120,7 +1120,8 @@ public class ManagerImpl implements Manager {
                     startReceiveThreadIfRequired();
                 }
             }
-        });
+        }, "receive-" + threadNumber.getAndIncrement());
+        receiveThread.start();
     }
 
     private void passReceivedMessageToHandlers(MessageEnvelope envelope, Throwable e) {
@@ -1351,15 +1352,18 @@ public class ManagerImpl implements Manager {
     public boolean trustIdentityVerified(
             RecipientIdentifier.Single recipient, IdentityVerificationCode verificationCode
     ) throws UnregisteredRecipientException {
-        return switch (verificationCode) {
-            case IdentityVerificationCode.Fingerprint fingerprint -> trustIdentity(recipient,
+        if (verificationCode instanceof IdentityVerificationCode.Fingerprint fingerprint) {
+            return trustIdentity(recipient,
                     r -> context.getIdentityHelper().trustIdentityVerified(r, fingerprint.fingerprint()));
-            case IdentityVerificationCode.SafetyNumber safetyNumber -> trustIdentity(recipient,
+        } else if (verificationCode instanceof IdentityVerificationCode.SafetyNumber safetyNumber) {
+            return trustIdentity(recipient,
                     r -> context.getIdentityHelper().trustIdentityVerifiedSafetyNumber(r, safetyNumber.safetyNumber()));
-            case IdentityVerificationCode.ScannableSafetyNumber safetyNumber -> trustIdentity(recipient,
+        } else if (verificationCode instanceof IdentityVerificationCode.ScannableSafetyNumber safetyNumber) {
+            return trustIdentity(recipient,
                     r -> context.getIdentityHelper().trustIdentityVerifiedSafetyNumber(r, safetyNumber.safetyNumber()));
-            case null -> throw new AssertionError("Invalid verification code type");
-        };
+        } else {
+            throw new AssertionError("Invalid verification code type");
+        }
     }
 
     @Override
@@ -1462,7 +1466,7 @@ public class ManagerImpl implements Manager {
             stopReceiveThread(thread);
         }
         context.close();
-        executor.close();
+        executor.shutdown();
 
         dependencies.getSignalWebSocket().disconnect();
         dependencies.getPushServiceSocket().close();

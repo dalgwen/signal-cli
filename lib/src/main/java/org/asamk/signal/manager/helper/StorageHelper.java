@@ -22,6 +22,7 @@ import org.whispersystems.signalservice.api.storage.SignalStorageRecord;
 import org.whispersystems.signalservice.api.storage.StorageId;
 import org.whispersystems.signalservice.api.storage.StorageKey;
 import org.whispersystems.signalservice.internal.storage.protos.ManifestRecord;
+import org.whispersystems.signalservice.internal.storage.protos.ManifestRecord.Identifier.Type;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -445,30 +446,32 @@ public class StorageHelper {
     private SignalStorageRecord buildLocalStorageRecord(
             Connection connection, StorageId storageId
     ) throws SQLException {
-        return switch (ManifestRecord.Identifier.Type.fromValue(storageId.getType())) {
-            case ManifestRecord.Identifier.Type.CONTACT -> {
+        Type storageIdType = ManifestRecord.Identifier.Type.fromValue(storageId.getType());
+        if (storageIdType == null) {
+            throw new AssertionError("Got unknown local storage record type: " + storageId);
+        }
+        return switch (storageIdType) {
+            case CONTACT -> {
                 final var recipient = account.getRecipientStore().getRecipient(connection, storageId);
                 final var address = recipient.getAddress().getIdentifier();
                 final var identity = account.getIdentityKeyStore().getIdentityInfo(connection, address);
                 yield StorageSyncModels.localToRemoteRecord(recipient, identity, storageId.getRaw());
             }
-            case ManifestRecord.Identifier.Type.GROUPV1 -> {
+            case GROUPV1 -> {
                 final var groupV1 = account.getGroupStore().getGroupV1(connection, storageId);
                 yield StorageSyncModels.localToRemoteRecord(groupV1, storageId.getRaw());
             }
-            case ManifestRecord.Identifier.Type.GROUPV2 -> {
+            case GROUPV2 -> {
                 final var groupV2 = account.getGroupStore().getGroupV2(connection, storageId);
                 yield StorageSyncModels.localToRemoteRecord(groupV2, storageId.getRaw());
             }
-            case ManifestRecord.Identifier.Type.ACCOUNT -> {
-                final var selfRecipient = account.getRecipientStore()
-                        .getRecipient(connection, account.getSelfRecipientId());
-                yield StorageSyncModels.localToRemoteRecord(account.getConfigurationStore(),
-                        selfRecipient,
-                        account.getUsernameLink(),
-                        storageId.getRaw());
+            case ACCOUNT -> {
+                final var selfRecipient = account.getRecipientStore().getRecipient(connection,
+                        account.getSelfRecipientId());
+                yield StorageSyncModels.localToRemoteRecord(account.getConfigurationStore(), selfRecipient,
+                        account.getUsernameLink(), storageId.getRaw());
             }
-            case null, default -> throw new AssertionError("Got unknown local storage record type: " + storageId);
+            default -> throw new AssertionError("Got unknown local storage record type: " + storageId);
         };
     }
 
@@ -531,12 +534,17 @@ public class StorageHelper {
 
         for (final var record : records) {
             logger.debug("Reading record of type {}", record.getType());
-            switch (ManifestRecord.Identifier.Type.fromValue(record.getType())) {
-                case ACCOUNT -> accountRecordProcessor.process(record.getAccount().get());
-                case GROUPV1 -> groupV1RecordProcessor.process(record.getGroupV1().get());
-                case GROUPV2 -> groupV2RecordProcessor.process(record.getGroupV2().get());
-                case CONTACT -> contactRecordProcessor.process(record.getContact().get());
-                case null, default -> unknownRecords.add(record.getId());
+            Type recordType = ManifestRecord.Identifier.Type.fromValue(record.getType());
+            if (recordType == null) {
+                unknownRecords.add(record.getId());
+            } else {
+                switch (recordType) {
+                    case ACCOUNT -> accountRecordProcessor.process(record.getAccount().get());
+                    case GROUPV1 -> groupV1RecordProcessor.process(record.getGroupV1().get());
+                    case GROUPV2 -> groupV2RecordProcessor.process(record.getGroupV2().get());
+                    case CONTACT -> contactRecordProcessor.process(record.getContact().get());
+                    default -> unknownRecords.add(record.getId());
+                }
             }
         }
 

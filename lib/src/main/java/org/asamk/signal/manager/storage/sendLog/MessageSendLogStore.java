@@ -38,7 +38,7 @@ public class MessageSendLogStore implements AutoCloseable {
     public MessageSendLogStore(final Database database, final boolean disableMessageSendLog) {
         this.database = database;
         this.sendLogDisabled = disableMessageSendLog;
-        this.cleanupThread = Thread.ofPlatform().name("msl-cleanup").daemon().start(() -> {
+        this.cleanupThread = new Thread(() -> {
             try {
                 final var interval = Duration.ofHours(1).toMillis();
                 while (!Thread.interrupted()) {
@@ -55,6 +55,9 @@ public class MessageSendLogStore implements AutoCloseable {
                 logger.debug("Stopping msl cleanup thread");
             }
         });
+        this.cleanupThread.setName("msl-cleanup");
+        this.cleanupThread.setDaemon(true);
+        this.cleanupThread.start();
     }
 
     public static void createSql(Connection connection) throws SQLException {
