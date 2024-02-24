@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,17 +75,18 @@ public class LegacySessionStore {
     static final Pattern sessionFileNamePattern = Pattern.compile("(\\d+)_(\\d+)");
 
     private static List<Key> parseFileNames(final File[] files, final RecipientResolver resolver) {
-        return Arrays.stream(files)
+        return (List<Key>) Arrays.stream(files)
                 .map(f -> sessionFileNamePattern.matcher(f.getName()))
                 .filter(Matcher::matches)
                 .map(matcher -> {
                     final var recipientId = resolver.resolveRecipient(Long.parseLong(matcher.group(1)));
                     if (recipientId == null) {
-                        return null;
+                        return Optional.empty();
                     }
-                    return new Key(recipientId, Integer.parseInt(matcher.group(2)));
+                    return Optional.of(new Key(recipientId, Integer.parseInt(matcher.group(2))));
                 })
-                .filter(Objects::nonNull)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
     }
 
