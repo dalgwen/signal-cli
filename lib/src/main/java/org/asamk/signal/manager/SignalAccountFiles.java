@@ -21,7 +21,9 @@ import org.whispersystems.signalservice.api.push.exceptions.DeprecatedVersionExc
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -65,17 +67,17 @@ public class SignalAccountFiles {
     }
 
     public MultiAccountManager initMultiAccountManager() throws IOException, AccountCheckException {
-        final var managerPairs = accountsStore.getAllAccounts().parallelStream().map(a -> {
+        final List<Pair<Manager, Throwable>> managerPairs = (List<Pair<Manager, Throwable>>) accountsStore.getAllAccounts().parallelStream().map(a -> {
             try {
-                return new Pair<Manager, Throwable>(initManager(a.number(), a.path()), null);
+                return Optional.of(new Pair<Manager, Throwable>(initManager(a.number(), a.path()), null));
             } catch (NotRegisteredException e) {
                 logger.warn("Ignoring {}: {} ({})", a.number(), e.getMessage(), e.getClass().getSimpleName());
-                return null;
+                return Optional.<Pair<Manager, Throwable>>empty();
             } catch (AccountCheckException | IOException e) {
                 logger.error("Failed to load {}: {} ({})", a.number(), e.getMessage(), e.getClass().getSimpleName());
-                return new Pair<Manager, Throwable>(null, e);
+                return Optional.of(new Pair<Manager, Throwable>(null, e));
             }
-        }).filter(Objects::nonNull).toList();
+        }).filter(Optional::isPresent).map(Optional::get).toList();
 
         for (final var pair : managerPairs) {
             if (pair.second() instanceof IOException e) {
