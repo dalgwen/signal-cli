@@ -18,10 +18,8 @@ java {
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
 
-    if (!JavaVersion.current().isCompatibleWith(targetCompatibility)) {
-        toolchain {
-            languageVersion.set(JavaLanguageVersion.of(targetCompatibility.majorVersion))
-        }
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
 
@@ -124,6 +122,9 @@ tasks.withType<Jar> {
 
 graalvmNative {
     toolchainDetection.set(false)
+    java {
+        jdkInstallation(project.findProperty("graalvmHome") as String? ?: System.getenv("GRAALVM_HOME") ?: System.getProperty("java.home"))
+    }
     binaries {
         create("linuxAmd64") {
             buildArgs.add("--platform")

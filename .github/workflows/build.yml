@@ -109,6 +109,7 @@ jobs:
             --no-build-cache \
             -Dorg.gradle.caching=false \
             -Dgraalvm.native-image.build-time=2026-01-01T00:00:00Z \
+            -PgraalvmHome="$GRAALVM_HOME" \
             --stacktrace 2>&1
         env:
           JAVA_HOME: ${{ env.JAVA_HOME }}
