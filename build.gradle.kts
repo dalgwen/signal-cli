@@ -196,37 +196,40 @@ listOf(
         group = "build"
         description = "Build native image for ${name}"
         
+        // Ensure lib project is built first
+        dependsOn(":lib:build")
+        
         // Get GRAALVM_HOME from environment
         val graalVmHome = System.getenv("GRAALVM_HOME")
             ?: throw GradleException("GRAALVM_HOME environment variable not set")
         
         doFirst {
             file(outputDir).mkdirs()
+            
+            executable = "$graalVmHome/bin/native-image"
+            
+            // Build classpath lazily at execution time (not configuration time)
+            val classpath = configurations.runtimeClasspath.get().files.joinToString(File.pathSeparator) {
+                it.absolutePath
+            }
+            
+            args("-classpath", classpath)
+            args("--platform", "$os/$arch")
+            args("-Dfile.encoding=UTF-8")
+            args("--enable-native-access=ALL-UNNAMED")
+            args("-march=compatibility")
+            args("--initialize-at-build-time=org.slf4j")
+            args("--initialize-at-build-time=org.asamk.signal")
+            args("-H:+ReportExceptionStackTraces")
+            args("-H:Name=$binaryName")
+            args("-H:Path=$outputDir")
+            args("-O1")
+            args("org.asamk.signal.Main")
+            
+            environment("JAVA_HOME", graalVmHome)
+            environment("GRAALVM_HOME", graalVmHome)
+            
+            println("Building native image for $name using GRAALVM_HOME=$graalVmHome, classpath has ${configurations.runtimeClasspath.get().files.size} entries")
         }
-        
-        executable = "$graalVmHome/bin/native-image"
-        
-        // Build classpath from runtimeClasspath
-        val classpath = configurations.runtimeClasspath.get().files.joinToString(File.pathSeparator) {
-            it.absolutePath
-        }
-        
-        args("-classpath", classpath)
-        args("--platform", "$os/$arch")
-        args("-Dfile.encoding=UTF-8")
-        args("--enable-native-access=ALL-UNNAMED")
-        args("-march=compatibility")
-        args("--initialize-at-build-time=org.slf4j")
-        args("--initialize-at-build-time=org.asamk.signal")
-        args("-H:+ReportExceptionStackTraces")
-        args("-H:Name=$binaryName")
-        args("-H:Path=$outputDir")
-        args("-O1")
-        args("org.asamk.signal.Main")
-        
-        environment("JAVA_HOME", graalVmHome)
-        environment("GRAALVM_HOME", graalVmHome)
-        
-        println("Building native image for $name using GRAALVM_HOME=$graalVmHome")
     }
 }
