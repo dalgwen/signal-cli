@@ -6,7 +6,7 @@ plugins {
     application
     eclipse
     `check-lib-versions`
-    id("org.graalvm.buildtools.native") version "0.11.5"
+    id("org.graalvm.buildtools.native") version "1.0.0"
 }
 
 allprojects {
@@ -18,8 +18,10 @@ java {
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
 
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(25))
+    if (!JavaVersion.current().isCompatibleWith(targetCompatibility)) {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(targetCompatibility.majorVersion))
+        }
     }
 }
 
@@ -54,7 +56,7 @@ val excludePatterns = mapOf(
     )
 )
 
-val schemaAnnotationProcessor = configurations.creating {
+val schemaAnnotationProcessor by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
 }
@@ -120,57 +122,78 @@ tasks.withType<Jar> {
     }
 }
 
-// Get GRAALVM_HOME from environment or use a default
-val graalVmHome: String = System.getenv("GRAALVM_HOME")
-    ?: (System.getProperty("graalvmHome")
-        ?: (System.getProperty("java.home")))
+tasks.register("fatJar", type = Jar::class) {
+    archiveBaseName.set("${project.name}-fat")
+    exclude(
+        "META-INF/*.SF",
+        "META-INF/**/*.MF",
+        "META-INF/*.DSA",
+        "META-INF/*.RSA",
+        "META-INF/NOTICE*",
+        "META-INF/LICENSE*",
+        "META-INF/INDEX.LIST",
+        "**/module-info.class",
+    )
+    duplicatesStrategy = DuplicatesStrategy.WARN
+    doFirst {
+        from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+    }
+    with(tasks.jar.get())
+}
 
-val nativeArchMap = listOf(
-    "LinuxAmd64"    to listOf("--platform=linux/amd64"),
-    "LinuxArm64"    to listOf("--platform=linux/aarch64"),
-    "MacosArm64"    to listOf("--platform=darwin/aarch64"),
-    "MacosAmd64"    to listOf("--platform=darwin/amd64"),
-    "WindowsAmd64"  to listOf("--platform=windows/amd64")
-)
-
-// Register custom nativeCompile tasks that invoke native-image directly
-for ((arch, platformArgs) in nativeArchMap) {
-    val outputDir = "build/native/nativeCompile"
-    val exeName = if (arch.startsWith("Windows")) "signal-cli.exe" else "signal-cli"
-
-    tasks.register<Exec>("nativeCompile$arch") {
-        group = "build"
-        description = "Compiles a native image for $arch using GraalVM at $graalVmHome"
-
-        doFirst {
-            file(outputDir).mkdirs()
+tasks.register("writeLibsignalVersion") {
+    doLast {
+        val resolutionResult = configurations.runtimeClasspath.get().incoming.resolutionResult
+        val libsignalDep =
+            resolutionResult.allDependencies.find { dep -> dep.requested is ModuleComponentSelector && (dep.requested as ModuleComponentSelector).group == "org.signal" && (dep.requested as ModuleComponentSelector).moduleIdentifier.name == "libsignal-client" }
+        if (libsignalDep != null) {
+            val version = (libsignalDep.requested as ModuleComponentSelector).version
+            file("libsignal-version").writeText(version + "\n")
+        } else {
+            throw GradleException("Could not find libsignal-client dependency")
         }
+    }
+}
 
-        executable = "$graalVmHome/bin/native-image"
-
-        // Get classpath from runtimeClasspath
-        val runtimeCp = configurations.runtimeClasspath.get()
-        val classpathFiles = runtimeCp.resolve().joinToString(File.pathSeparator) { it.absolutePath }
-
-        args("-J--enable-native-access=ALL-UNNAMED")
-        args("-J-Dfile.encoding=UTF-8")
-        args("-J--add-opens=java.base/java.lang=ALL-UNNAMED")
-        args("-J--add-opens=java.base/java.util=ALL-UNNAMED")
-        args("-J--add-opens=java.base/java.security=ALL-UNNAMED")
-        for (arg in platformArgs) {
-            args(arg)
+tasks.register<JavaCompile>("jsonSchemas") {
+    dependsOn(tasks.compileJava)
+    val schemaBaseUri = "http://localhost:8080/schemas/"
+    source = sourceSets.main.get().java
+    include("org/asamk/signal/json/**/*.java")
+    classpath = sourceSets.main.get().compileClasspath + files(sourceSets.main.get().java.destinationDirectory)
+    destinationDirectory.set(layout.buildDirectory.dir("generated"))
+    options.annotationProcessorPath = schemaAnnotationProcessor
+    options.compilerArgs.addAll(
+        listOf(
+            "-Amicronaut.processing.group=org.asamk",
+            "-Amicronaut.processing.module=signal-cli",
+            "-Amicronaut.processing.annotations=org.asamk.signal.json.*",
+            "-Amicronaut.jsonschema.baseUri=$schemaBaseUri",
+        )
+    )
+    doLast {
+        fileTree(destinationDirectory.get().dir("META-INF/schemas").asFile) {
+            include("*.schema.json")
+        }.forEach { schemaFile ->
+            val normalized = schemaFile.readText().replace("\"$schemaBaseUri/", "\"")
+            val prettyJson = JsonOutput.prettyPrint(normalized)
+            schemaFile.writeText("$prettyJson\n")
         }
-        args("--initialize-at-build-time=org.slf4j")
-        args("--initialize-at-build-time=org.asamk.signal")
-        args("-H:+ReportExceptionStackTraces")
-        args("-H:Name=$exeName")
-        args("-O1")
-        args("-cp", classpathFiles)
-        args("org.asamk.signal.Main")
+    }
+}
 
-        environment("JAVA_HOME", graalVmHome)
-        environment("GRAALVM_HOME", graalVmHome)
-
-        println("nativeCompile$arch: using GRAALVM_HOME=$graalVmHome, executable=$graalVmHome/bin/native-image")
+// GraalVM native image configuration
+graalvmNative {
+    // Use GRAALVM_HOME if set, otherwise use toolchain detection
+    if (System.getenv("GRAALVM_HOME") != null) {
+        toolchainDetection.set(false)
+    }
+    binaries {
+        this@ binaries.getByName("main").run {
+            buildArgs.add("-Dfile.encoding=UTF-8")
+            buildArgs.add("-J-Dfile.encoding=UTF-8")
+            buildArgs.add("--enable-native-access=ALL-UNNAMED")
+            resources.autodetect()
+        }
     }
 }

@@ -38,23 +38,18 @@ jobs:
         include:
           - os: ubuntu-latest
             arch: amd64
-            native_arch: LinuxAmd64
             artifact_name: Linux-amd64
           - os: ubuntu-latest
             arch: arm64
-            native_arch: LinuxArm64
             artifact_name: Linux-arm64
           - os: macos-14
             arch: arm64
-            native_arch: MacosArm64
             artifact_name: macOS-arm64
           - os: macos-13
             arch: amd64
-            native_arch: MacosAmd64
             artifact_name: macOS-amd64
           - os: windows-latest
             arch: amd64
-            native_arch: WindowsAmd64
             artifact_name: Windows-amd64
     runs-on: ${{ matrix.os }}
     steps:
@@ -102,14 +97,13 @@ jobs:
           export GRAALVM_HOME="${{ env.GRAALVM_HOME }}"
           export JAVA_HOME="$GRAALVM_HOME"
           export PATH="$GRAALVM_HOME/bin:$PATH"
-          ./gradlew nativeCompile${{ matrix.native_arch }} \
+          ./gradlew nativeCompile \
             --no-daemon \
             --max-workers=1 \
             -Dkotlin.compiler.execution.strategy=in-process \
             --no-build-cache \
             -Dorg.gradle.caching=false \
             -Dgraalvm.native-image.build-time=2026-01-01T00:00:00Z \
-            -Dorg.gradle.java.home="$GRAALVM_HOME" \
             --stacktrace 2>&1
         env:
           JAVA_HOME: ${{ env.JAVA_HOME }}
