@@ -62,6 +62,7 @@ jobs:
       - name: Download and install GraalVM
         shell: bash
         run: |
+          set -x
           GRAALVM_VERSION="25.0.2"
           case "${{ matrix.os }}" in
             ubuntu-latest)
@@ -87,20 +88,22 @@ jobs:
           esac
           FILENAME="graalvm-community-jdk-${GRAALVM_VERSION}_${OS}-${ARCH}_bin"
           echo "Downloading ${FILENAME}..."
-          curl -fsSL "https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAALVM_VERSION}/${FILENAME}.${EXT}" -o "./${FILENAME}.${EXT}"
+          curl -fSL "https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAALVM_VERSION}/${FILENAME}.${EXT}" -o "./${FILENAME}.${EXT}"
+          ls -la "./${FILENAME}.${EXT}"
           echo "Installing GraalVM..."
           if [[ "$EXT" == "zip" ]]; then
             unzip -q "./${FILENAME}.${EXT}"
           else
             tar -xzf "./${FILENAME}.${EXT}"
           fi
+          ls -la
           export GRAALVM_HOME="$(pwd)/graalvm-community-jdk-${GRAALVM_VERSION}"
           export JAVA_HOME="$GRAALVM_HOME"
           export PATH="$GRAALVM_HOME/bin:$PATH"
           echo "GRAALVM_HOME=$GRAALVM_HOME" >> $GITHUB_ENV
           echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
           echo "PATH=$GRAALVM_HOME/bin:$PATH" >> $GITHUB_ENV
-          native-image --version
+          java -version
       - name: Build native image
         run: |
           ./gradlew nativeCompile${{ matrix.native_arch }} \
