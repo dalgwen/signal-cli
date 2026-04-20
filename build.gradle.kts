@@ -57,7 +57,14 @@ graalvmNative {
             buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
             resources { autodetect() }
         }
+        // Force eager realization of all binaries so Gradle registers tasks
+        all { b -> println("Binary: ${b.name}") }
     }
+}
+
+// Workaround: directly reference binary names to force task registration
+afterEvaluate {
+    println("Forcing binary task registration for: ${project.extensions.getByType(org.graalvm.buildtools.gradle.dsl.GraalVMExtension::class.java).binaries.names}")
 }
 
 val artifactType = Attribute.of("artifactType", String::class.java)
