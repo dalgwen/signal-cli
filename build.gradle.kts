@@ -5,6 +5,7 @@ plugins {
     application
     eclipse
     `check-lib-versions`
+    id("org.graalvm.buildtools.native") version "0.11.5"
 }
 
 allprojects {
@@ -60,7 +61,7 @@ for ((taskName, config) in nativePlatforms) {
             "-march=compatibility"
         )
 
-        // Get classpath
+        // Get classpath from the runtime classpath
         val runtimeCp = configurations.runtimeClasspath.get()
         val classpathFiles = runtimeCp.resolve().joinToString(File.pathSeparator) { it.absolutePath }
 
@@ -71,17 +72,4 @@ for ((taskName, config) in nativePlatforms) {
 
         environment("JAVA_HOME", graalVmHome)
     }
-}
-
-val artifactType = Attribute.of("artifactType", String::class.java)
-val minified = Attribute.of("minified", Boolean::class.javaObjectType)
-dependencies {
-    attributesSchema {
-        attribute(minified)
-    }
-    artifactTypes.getByName("jar") {
-        attributes.attribute(minified, false)
-    }
-
-    add("releaseRuntimeClasspath", configurations.archivesArtifacts.get())
 }
