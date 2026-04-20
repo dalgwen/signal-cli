@@ -30,40 +30,32 @@ application {
 }
 
 graalvmNative {
+    toolchainDetection.set(true)
     binaries {
         create("linuxAmd64") {
-            buildArgs.add("--platform=linux/amd64")
-            buildArgs.add("-march=compatibility")
+            buildArgs("--platform=linux/amd64", "-march=compatibility")
+            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
+            resources { autodetect() }
         }
         create("linuxArm64") {
-            buildArgs.add("--platform=linux/aarch64")
-            buildArgs.add("-march=arm64")
+            buildArgs("--platform=linux/aarch64", "-march=arm64")
+            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
+            resources { autodetect() }
         }
         create("macosArm64") {
-            buildArgs.add("--platform=darwin/aarch64")
-            buildArgs.add("-march=arm64")
+            buildArgs("--platform=darwin/aarch64", "-march=arm64")
+            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
+            resources { autodetect() }
         }
         create("macosAmd64") {
-            buildArgs.add("--platform=darwin/amd64")
-            buildArgs.add("-march=compatibility")
+            buildArgs("--platform=darwin/amd64", "-march=compatibility")
+            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
+            resources { autodetect() }
         }
         create("windowsAmd64") {
-            buildArgs.add("--platform=windows/amd64")
-            buildArgs.add("-march=compatibility")
-        }
-        all.forEach { binary ->
-            binary.buildArgs.add("-Dfile.encoding=UTF-8")
-            binary.buildArgs.add("-J-Dfile.encoding=UTF-8")
-            binary.buildArgs.add("--enable-native-access=ALL-UNNAMED")
-            binary.resources.autodetect()
-            if (System.getenv("GRAALVM_HOME") == null) {
-                binary.toolchainDetection.set(true)
-                binary.javaLauncher.set(javaToolchains.launcherFor {
-                    languageVersion.set(JavaLanguageVersion.of(25))
-                })
-            } else {
-                binary.toolchainDetection.set(false)
-            }
+            buildArgs("--platform=windows/amd64", "-march=compatibility")
+            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
+            resources { autodetect() }
         }
     }
 }
