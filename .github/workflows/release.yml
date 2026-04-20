@@ -15,10 +15,15 @@ env:
 
 jobs:
   build:
-    uses: AsamK/signal-cli/.github/workflows/build.yml@master
+    uses: ./build.yml
+
+  build-native:
+    uses: ./build.yml
+    with:
+      build-native: true
 
   release:
-    needs: build
+    needs: [build, build-native]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -27,6 +32,9 @@ jobs:
     steps:
       - name: Download signal-cli build from CI workflow
         uses: actions/download-artifact@v8
+        with:
+          pattern: signal-cli-*
+          merge-multiple: true
 
       - name: Get signal-cli version
         id: version
@@ -34,45 +42,25 @@ jobs:
           mv ./signal-cli-reproducible-build/* .
           echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
 
-      - name: Create release
-        id: create_release
+      - name: Upload archive
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.version.outputs.version }} # note: added `v`
-          release_name: v${{ steps.version.outputs.version }} # note: added `v`
+          tag_name: v${{ steps.version.outputs.version }}
+          release_name: v${{ steps.version.outputs.version }}
           draft: true
 
-      - name: Upload archive
-        uses: actions/upload-release-asset@v1
+      - name: Upload all artifacts
+        run: |
+          for artifact in dist/*.tar.gz; do
+            echo "Uploading $(basename "$artifact")"
+            gh release upload v${{ steps.version.outputs.version }} "$artifact" \
+              --clobber \
+              -t "application/x-compressed-tar"
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: signal-cli-${{ steps.version.outputs.version }}.tar.gz
-          asset_name: signal-cli-${{ steps.version.outputs.version }}.tar.gz
-          asset_content_type: application/x-compressed-tar # .tar.gz
-
-      - name: Upload Linux native archive
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: signal-cli-${{ steps.version.outputs.version }}-Linux-native.tar.gz
-          asset_name: signal-cli-${{ steps.version.outputs.version }}-Linux-native.tar.gz
-          asset_content_type: application/x-compressed-tar # .tar.gz
-
-      - name: Upload Linux client archive
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: signal-cli-${{ steps.version.outputs.version }}-Linux-client.tar.gz
-          asset_name: signal-cli-${{ steps.version.outputs.version }}-Linux-client.tar.gz
-          asset_content_type: application/x-compressed-tar # .tar.gz
 
   build-container:
     needs: release
@@ -122,14 +110,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - name: Download signal-cli build from CI workflow
+      - name: Download native build
         uses: actions/download-artifact@v8
+        with:
+          path: ./native-build
 
-      - name: Move archive file
+      - name: Extract Linux-amd64 native
         run: |
-          tar xf ./signal-cli-reproducible-build/signal-cli-${{ needs.release.outputs.version }}-Linux-native.tar.gz
           mkdir -p build/native/nativeCompile/
-          mv signal-cli build/native/nativeCompile/
+          tar xf ./native-build/signal-cli-Linux-amd64/signal-cli-Linux-amd64-native.tar.gz -C build/native/nativeCompile/
           chmod +x build/native/nativeCompile/signal-cli
 
       - name: Build Image

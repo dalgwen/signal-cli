@@ -30,20 +30,53 @@ application {
 }
 
 graalvmNative {
+    targets {
+        register("linuxAmd64") {
+            binaryPlatform.set("linux/amd64")
+        }
+        register("linuxArm64") {
+            binaryPlatform.set("linux/aarch64")
+        }
+        register("macosArm64") {
+            binaryPlatform.set("darwin/aarch64")
+        }
+        register("macosAmd64") {
+            binaryPlatform.set("darwin/amd64")
+        }
+        register("windowsAmd64") {
+            binaryPlatform.set("windows/amd64")
+        }
+    }
     binaries {
-        this["main"].run {
-            buildArgs.add("-Dfile.encoding=UTF-8")
-            buildArgs.add("-J-Dfile.encoding=UTF-8")
+        all.forEach { binary ->
+            binary.buildArgs.add("-Dfile.encoding=UTF-8")
+            binary.buildArgs.add("-J-Dfile.encoding=UTF-8")
+            binary.buildArgs.add("--enable-native-access=ALL-UNNAMED")
+            binary.resources.autodetect()
+        }
+        get("linuxAmd64").run {
             buildArgs.add("-march=compatibility")
-            buildArgs.add("--enable-native-access=ALL-UNNAMED")
-            resources.autodetect()
+        }
+        get("linuxArm64").run {
+            buildArgs.add("-march=arm64")
+        }
+        get("macosArm64").run {
+            buildArgs.add("-march=arm64")
+        }
+        get("macosAmd64").run {
+            buildArgs.add("-march=compatibility")
+        }
+        get("windowsAmd64").run {
+            buildArgs.add("-march=compatibility")
+        }
+        all.forEach { binary ->
             if (System.getenv("GRAALVM_HOME") == null) {
-                toolchainDetection.set(true)
-                javaLauncher.set(javaToolchains.launcherFor {
+                binary.toolchainDetection.set(true)
+                binary.javaLauncher.set(javaToolchains.launcherFor {
                     languageVersion.set(JavaLanguageVersion.of(25))
                 })
             } else {
-                toolchainDetection.set(false)
+                binary.toolchainDetection.set(false)
             }
         }
     }

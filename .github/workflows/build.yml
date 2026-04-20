@@ -31,6 +31,92 @@ jobs:
           name: signal-cli-${{ matrix.java }}-${{ github.job }}
           path: dist/*
 
+  build-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: amd64
+            native_arch: linuxAmd64
+            artifact_name: Linux-amd64
+          - os: ubuntu-latest
+            arch: arm64
+            native_arch: linuxArm64
+            artifact_name: Linux-arm64
+          - os: macos-14
+            arch: arm64
+            native_arch: macosArm64
+            artifact_name: macOS-arm64
+          - os: macos-13
+            arch: amd64
+            native_arch: macosAmd64
+            artifact_name: macOS-amd64
+          - os: windows-latest
+            arch: amd64
+            native_arch: windowsAmd64
+            artifact_name: Windows-amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up GraalVM for native builds
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.0.2'
+          java: '25'
+          arch: ${{ matrix.arch }}
+      - name: Build native image
+        run: |
+          ./gradlew nativeCompile${{ matrix.native_arch }} \
+            --no-daemon \
+            --max-workers=1 \
+            -Dkotlin.compiler.execution.strategy=in-process \
+            --no-build-cache \
+            -Dorg.gradle.caching=false \
+            -Dgraalvm.native-image.build-time=2026-01-01T00:00:00Z
+        env:
+          JAVA_HOME: ${{ env.GRAALVM_HOME }}
+      - name: Package native binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [[ "${{ matrix.os }}" == windows* ]]; then
+            strip --strip-all \
+              --remove-section=.note.gnu.build-id \
+              --remove-section=.comment \
+              --remove-section=.gnu_debuglink \
+              --remove-section=.annobin.notes \
+              --remove-section=.gnu.build.attributes \
+              --remove-section=.note.ABI-tag \
+              build/native/nativeCompile/signal-cli.exe
+            chmod +x build/native/nativeCompile/signal-cli.exe
+            SOURCE_DATE_EPOCH=1767225600 \
+              tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
+              -cf "dist/signal-cli-${{ matrix.artifact_name }}-native.tar" \
+              -C build/native/nativeCompile signal-cli.exe
+          else
+            strip --strip-all \
+              --remove-section=.note.gnu.build-id \
+              --remove-section=.comment \
+              --remove-section=.gnu_debuglink \
+              --remove-section=.annobin.notes \
+              --remove-section=.gnu.build.attributes \
+              --remove-section=.note.ABI-tag \
+              build/native/nativeCompile/signal-cli
+            chmod +x build/native/nativeCompile/signal-cli
+            SOURCE_DATE_EPOCH=1767225600 \
+              tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
+              -cf "dist/signal-cli-${{ matrix.artifact_name }}-native.tar" \
+              -C build/native/nativeCompile signal-cli
+          fi
+          gzip -n -9 "dist/signal-cli-${{ matrix.artifact_name }}-native.tar"
+          ls -lsh dist/
+      - name: Upload native artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: signal-cli-${{ matrix.artifact_name }}
+          path: dist/*
+
   build-client:
     strategy:
       matrix:
