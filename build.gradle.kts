@@ -190,7 +190,7 @@ listOf(
     "windowsAmd64"  to Triple("windows", "amd64", "signal-cli.exe")
 ).forEach { (name, config) ->
     val (os, arch, binaryName) = config
-    val outputDir = "build/native/$name"
+    val outputDir = "build/native/nativeCompile"
     
     tasks.register<Exec>("nativeCompile${name.replaceFirstChar { it.uppercase() }}") {
         group = "build"
@@ -202,7 +202,6 @@ listOf(
         
         doFirst {
             file(outputDir).mkdirs()
-            file("build/native/nativeCompile").mkdirs()
         }
         
         executable = "$graalVmHome/bin/native-image"

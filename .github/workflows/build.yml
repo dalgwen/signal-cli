@@ -38,19 +38,29 @@ jobs:
         include:
           - os: ubuntu-latest
             arch: amd64
-            artifact_name: Linux-amd64
+            native_task: nativeCompileLinuxAmd64
+            artifact_dir: Linux-amd64
+            binary_name: signal-cli
           - os: ubuntu-latest
             arch: arm64
-            artifact_name: Linux-arm64
+            native_task: nativeCompileLinuxArm64
+            artifact_dir: Linux-arm64
+            binary_name: signal-cli
           - os: macos-14
             arch: arm64
-            artifact_name: macOS-arm64
+            native_task: nativeCompileMacosArm64
+            artifact_dir: macOS-arm64
+            binary_name: signal-cli
           - os: macos-13
             arch: amd64
-            artifact_name: macOS-amd64
+            native_task: nativeCompileMacosAmd64
+            artifact_dir: macOS-amd64
+            binary_name: signal-cli
           - os: windows-latest
             arch: amd64
-            artifact_name: Windows-amd64
+            native_task: nativeCompileWindowsAmd64
+            artifact_dir: Windows-amd64
+            binary_name: signal-cli.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -97,7 +107,7 @@ jobs:
           export GRAALVM_HOME="${{ env.GRAALVM_HOME }}"
           export JAVA_HOME="$GRAALVM_HOME"
           export PATH="$GRAALVM_HOME/bin:$PATH"
-          ./gradlew nativeCompile \
+          ./gradlew ${{ matrix.native_task }} \
             --no-daemon \
             --max-workers=1 \
             -Dkotlin.compiler.execution.strategy=in-process \
@@ -112,7 +122,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          echo "Packaging for ${{ matrix.os }} (${{ matrix.artifact_name }})"
+          echo "Packaging for ${{ matrix.os }} (${{ matrix.artifact_dir }})"
           ls -la build/native/nativeCompile/ 2>&1 || echo "nativeCompile dir not found"
           if [[ "${{ matrix.os }}" == windows* ]]; then
             strip --strip-all \
@@ -126,7 +136,7 @@ jobs:
             chmod +x build/native/nativeCompile/signal-cli.exe
             SOURCE_DATE_EPOCH=1767225600 \
               tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
-              -cf "dist/signal-cli-${{ matrix.artifact_name }}-native.tar" \
+              -cf "dist/signal-cli-${{ matrix.artifact_dir }}-native.tar" \
               -C build/native/nativeCompile signal-cli.exe
           else
             strip --strip-all \
@@ -140,15 +150,15 @@ jobs:
             chmod +x build/native/nativeCompile/signal-cli
             SOURCE_DATE_EPOCH=1767225600 \
               tar --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner \
-              -cf "dist/signal-cli-${{ matrix.artifact_name }}-native.tar" \
+              -cf "dist/signal-cli-${{ matrix.artifact_dir }}-native.tar" \
               -C build/native/nativeCompile signal-cli
           fi
-          gzip -n -9 "dist/signal-cli-${{ matrix.artifact_name }}-native.tar"
+          gzip -n -9 "dist/signal-cli-${{ matrix.artifact_dir }}-native.tar"
           ls -lsh dist/
       - name: Upload native artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: signal-cli-${{ matrix.artifact_name }}
+          name: signal-cli-${{ matrix.artifact_dir }}
           path: dist/*
 
   build-client:
