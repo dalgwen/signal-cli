@@ -149,5 +149,3 @@ graalvmNative {
         }
     }
 }
-
-}
