@@ -58,14 +58,13 @@ graalvmNative {
     }
 }
 
-// Force the binaries to be realized by calling configureEach in afterEvaluate
-// This ensures the GraalVM plugin's task registration callbacks fire
+// Force the binaries to be realized by accessing each one by name
 afterEvaluate {
     val graalExt = project.extensions.getByType(org.graalvm.buildtools.gradle.dsl.GraalVMExtension::class.java)
-    // Accessing names forces the container to be fully realized
-    graalExt.binaries.names
-    // configureEach on the binaries container forces realization of all binaries
-    graalExt.binaries.configureEach { b ->
-        println("Binary realized: ${b.name}")
+    val binaryNames = graalExt.binaries.names
+    println("Registered native binaries: $binaryNames")
+    for (name in binaryNames) {
+        val binary = graalExt.binaries.getByName(name)
+        println("Forcing binary realization: ${binary.name}")
     }
 }
