@@ -62,9 +62,9 @@ jobs:
       - name: Set up GraalVM for native builds
         uses: graalvm/setup-graalvm@v1
         with:
-          version: '25.0.2'
-          java-version: '25'
-          arch: ${{ matrix.arch }}
+          version: '22.0.0'
+          java-version: '22'
+          native-image-musl: 'false'
       - name: Build native image
         run: |
           ./gradlew nativeCompile${{ matrix.native_arch }} \

@@ -14,8 +14,8 @@ allprojects {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.VERSION_22
+    targetCompatibility = JavaVersion.VERSION_22
 
     if (!JavaVersion.current().isCompatibleWith(targetCompatibility)) {
         toolchain {
@@ -73,7 +73,7 @@ graalvmNative {
             if (System.getenv("GRAALVM_HOME") == null) {
                 binary.toolchainDetection.set(true)
                 binary.javaLauncher.set(javaToolchains.launcherFor {
-                    languageVersion.set(JavaLanguageVersion.of(25))
+                    languageVersion.set(JavaLanguageVersion.of(22))
                 })
             } else {
                 binary.toolchainDetection.set(false)
