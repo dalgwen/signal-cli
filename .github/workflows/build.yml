@@ -62,7 +62,6 @@ jobs:
       - name: Download and install GraalVM
         shell: bash
         run: |
-          set -x
           GRAALVM_VERSION="25.0.2"
           case "${{ matrix.os }}" in
             ubuntu-latest)
@@ -70,7 +69,7 @@ jobs:
               OS="linux"
               EXT="tar.gz"
               ;;
-            macos-14|macos-latest)
+            macos-14)
               ARCH="aarch64"
               OS="macos"
               EXT="tar.gz"
@@ -87,32 +86,30 @@ jobs:
               ;;
           esac
           FILENAME="graalvm-community-jdk-${GRAALVM_VERSION}_${OS}-${ARCH}_bin"
-          echo "Downloading ${FILENAME}..."
-          curl -fSL "https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAALVM_VERSION}/${FILENAME}.${EXT}" -o "./${FILENAME}.${EXT}"
-          ls -la "./${FILENAME}.${EXT}"
-          echo "Installing GraalVM..."
+          curl -fsSL "https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAALVM_VERSION}/${FILENAME}.${EXT}" -o "./${FILENAME}.${EXT}"
+          mkdir -p graalvm
           if [[ "$EXT" == "zip" ]]; then
-            unzip -q "./${FILENAME}.${EXT}"
+            unzip -q "./${FILENAME}.${EXT}" -d graalvm/
           else
-            tar -xzf "./${FILENAME}.${EXT}"
+            tar -xzf "./${FILENAME}.${EXT}" -C graalvm/
           fi
-          ls -la
-          export GRAALVM_HOME="$(pwd)/graalvm-community-jdk-${GRAALVM_VERSION}"
-          export JAVA_HOME="$GRAALVM_HOME"
-          export PATH="$GRAALVM_HOME/bin:$PATH"
+          GRAALVM_HOME=$(find graalvm -maxdepth 1 -type d -name 'graalvm-community-*' | head -1)
           echo "GRAALVM_HOME=$GRAALVM_HOME" >> $GITHUB_ENV
-          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
+          echo "JAVA_HOME=$GRAALVM_HOME" >> $GITHUB_ENV
           echo "PATH=$GRAALVM_HOME/bin:$PATH" >> $GITHUB_ENV
-          java -version
       - name: Build native image
         run: |
+          export GRAALVM_HOME="${{ env.GRAALVM_HOME }}"
+          export JAVA_HOME="$GRAALVM_HOME"
+          export PATH="$GRAALVM_HOME/bin:$PATH"
           ./gradlew nativeCompile${{ matrix.native_arch }} \
             --no-daemon \
             --max-workers=1 \
             -Dkotlin.compiler.execution.strategy=in-process \
             --no-build-cache \
             -Dorg.gradle.caching=false \
-            -Dgraalvm.native-image.build-time=2026-01-01T00:00:00Z
+            -Dgraalvm.native-image.build-time=2026-01-01T00:00:00Z \
+            --stacktrace 2>&1 | tail -80
         env:
           JAVA_HOME: ${{ env.JAVA_HOME }}
           GRAALVM_HOME: ${{ env.GRAALVM_HOME }}
