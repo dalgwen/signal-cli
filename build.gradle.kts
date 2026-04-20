@@ -1,4 +1,5 @@
 import groovy.json.JsonOutput
+import java.io.File
 
 plugins {
     java
@@ -53,7 +54,7 @@ val excludePatterns = mapOf(
     )
 )
 
-val schemaAnnotationProcessor by configurations.creating {
+val schemaAnnotationProcessor = configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
 }
@@ -119,33 +120,57 @@ tasks.withType<Jar> {
     }
 }
 
-graalvmNative {
-    toolchainDetection.set(false)
-    binaries {
-        create("linuxAmd64") {
-            buildArgs.add("--platform")
-            buildArgs.add("linux/amd64")
-            buildArgs.add("-Dfile.encoding=UTF-8")
+// Get GRAALVM_HOME from environment or use a default
+val graalVmHome: String = System.getenv("GRAALVM_HOME")
+    ?: (System.getProperty("graalvmHome")
+        ?: (System.getProperty("java.home")))
+
+val nativeArchMap = listOf(
+    "LinuxAmd64"    to listOf("--platform=linux/amd64"),
+    "LinuxArm64"    to listOf("--platform=linux/aarch64"),
+    "MacosArm64"    to listOf("--platform=darwin/aarch64"),
+    "MacosAmd64"    to listOf("--platform=darwin/amd64"),
+    "WindowsAmd64"  to listOf("--platform=windows/amd64")
+)
+
+// Register custom nativeCompile tasks that invoke native-image directly
+for ((arch, platformArgs) in nativeArchMap) {
+    val outputDir = "build/native/nativeCompile"
+    val exeName = if (arch.startsWith("Windows")) "signal-cli.exe" else "signal-cli"
+
+    tasks.register<Exec>("nativeCompile$arch") {
+        group = "build"
+        description = "Compiles a native image for $arch using GraalVM at $graalVmHome"
+
+        doFirst {
+            file(outputDir).mkdirs()
         }
-        create("linuxArm64") {
-            buildArgs.add("--platform")
-            buildArgs.add("linux/aarch64")
-            buildArgs.add("-Dfile.encoding=UTF-8")
+
+        executable = "$graalVmHome/bin/native-image"
+
+        // Get classpath from runtimeClasspath
+        val runtimeCp = configurations.runtimeClasspath.get()
+        val classpathFiles = runtimeCp.resolve().joinToString(File.pathSeparator) { it.absolutePath }
+
+        args("-J--enable-native-access=ALL-UNNAMED")
+        args("-J-Dfile.encoding=UTF-8")
+        args("-J--add-opens=java.base/java.lang=ALL-UNNAMED")
+        args("-J--add-opens=java.base/java.util=ALL-UNNAMED")
+        args("-J--add-opens=java.base/java.security=ALL-UNNAMED")
+        for (arg in platformArgs) {
+            args(arg)
         }
-        create("macosArm64") {
-            buildArgs.add("--platform")
-            buildArgs.add("darwin/aarch64")
-            buildArgs.add("-Dfile.encoding=UTF-8")
-        }
-        create("macosAmd64") {
-            buildArgs.add("--platform")
-            buildArgs.add("darwin/amd64")
-            buildArgs.add("-Dfile.encoding=UTF-8")
-        }
-        create("windowsAmd64") {
-            buildArgs.add("--platform")
-            buildArgs.add("windows/amd64")
-            buildArgs.add("-Dfile.encoding=UTF-8")
-        }
+        args("--initialize-at-build-time=org.slf4j")
+        args("--initialize-at-build-time=org.asamk.signal")
+        args("-H:+ReportExceptionStackTraces")
+        args("-H:Name=$exeName")
+        args("-O1")
+        args("-cp", classpathFiles)
+        args("org.asamk.signal.Main")
+
+        environment("JAVA_HOME", graalVmHome)
+        environment("GRAALVM_HOME", graalVmHome)
+
+        println("nativeCompile$arch: using GRAALVM_HOME=$graalVmHome, executable=$graalVmHome/bin/native-image")
     }
 }
