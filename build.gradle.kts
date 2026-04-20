@@ -1,5 +1,3 @@
-import groovy.json.JsonOutput
-
 plugins {
     java
     application
@@ -29,42 +27,33 @@ application {
     applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
 }
 
-// Platform configurations for native image builds
-val nativePlatforms = mapOf(
-    "LinuxAmd64"    to Triple("linux", "amd64", "signal-cli"),
-    "LinuxArm64"    to Triple("linux", "aarch64", "signal-cli"),
-    "MacosArm64"    to Triple("darwin", "aarch64", "signal-cli"),
-    "MacosAmd64"    to Triple("darwin", "amd64", "signal-cli"),
-    "WindowsAmd64"  to Triple("windows", "amd64", "signal-cli.exe")
-)
-
-for ((taskName, config) in nativePlatforms) {
-    val (os, arch, binaryName) = config
-    val outputDir = "build/native/nativeCompile"
-
-    tasks.register<Exec>("nativeCompile$taskName") {
-        group = "build"
-        description = "Compiles a native image for $taskName"
-
-        doFirst {
-            file(outputDir).mkdirs()
+graalvmNative {
+    toolchainDetection.set(false)
+    binaries {
+        create("linuxAmd64") {
+            buildArgs.add("--platform")
+            buildArgs.add("linux/amd64")
+            buildArgs.add("-Dfile.encoding=UTF-8")
         }
-
-        val graalVmHome = System.getenv("GRAALVM_HOME") ?: "/usr/local/graalvm"
-        executable = "$graalVmHome/bin/native-image"
-
-        // Get classpath from the runtime classpath
-        val runtimeCp = configurations.runtimeClasspath.get()
-        val classpathFiles = runtimeCp.resolve().joinToString(File.pathSeparator) { it.absolutePath }
-
-        args("-cp", classpathFiles)
-        args("--platform", "$os/$arch")
-        args("-Dfile.encoding=UTF-8")
-        args("--enable-native-access=ALL-UNNAMED")
-        args("-march=compatibility")
-        args("-o", file("$outputDir/$binaryName").absolutePath)
-        args("org.asamk.signal.Main")
-
-        environment("JAVA_HOME", graalVmHome)
+        create("linuxArm64") {
+            buildArgs.add("--platform")
+            buildArgs.add("linux/aarch64")
+            buildArgs.add("-Dfile.encoding=UTF-8")
+        }
+        create("macosArm64") {
+            buildArgs.add("--platform")
+            buildArgs.add("darwin/aarch64")
+            buildArgs.add("-Dfile.encoding=UTF-8")
+        }
+        create("macosAmd64") {
+            buildArgs.add("--platform")
+            buildArgs.add("darwin/amd64")
+            buildArgs.add("-Dfile.encoding=UTF-8")
+        }
+        create("windowsAmd64") {
+            buildArgs.add("--platform")
+            buildArgs.add("windows/amd64")
+            buildArgs.add("-Dfile.encoding=UTF-8")
+        }
     }
 }
