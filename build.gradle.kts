@@ -1,3 +1,5 @@
+import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
+
 plugins {
     java
     application
@@ -58,13 +60,20 @@ graalvmNative {
     }
 }
 
-// Force the binaries to be realized by accessing each one by name
+// Manually register nativeCompile tasks for each binary since the GraalVM plugin's
+// automatic task registration doesn't work properly with Gradle 9.4's lazy configuration
+// The graalvmNative.binaries container is lazy, and the plugin's configureEach
+// callbacks don't fire when binaries are created in the build script.
 afterEvaluate {
     val graalExt = project.extensions.getByType(org.graalvm.buildtools.gradle.dsl.GraalVMExtension::class.java)
-    val binaryNames = graalExt.binaries.names
-    println("Registered native binaries: $binaryNames")
-    for (name in binaryNames) {
-        val binary = graalExt.binaries.getByName(name)
-        println("Forcing binary realization: ${binary.name}")
+    for (binaryName in listOf("linuxAmd64", "linuxArm64", "macosArm64", "macosAmd64", "windowsAmd64")) {
+        val binary = graalExt.binaries.getByName(binaryName)
+        val taskName = if (binaryName == "main") "nativeCompile" else "nativeCompile${binaryName.replaceFirstChar { it.uppercase() }}"
+        project.tasks.register(taskName, BuildNativeImageTask::class.java) { task ->
+            task.group = "build"
+            task.description = "Compiles a native image for the $binaryName binary"
+            task.options.convention(binary)
+        }
+        println("Registered task: $taskName for binary: $binaryName")
     }
 }
