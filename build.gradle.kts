@@ -53,20 +53,15 @@ for ((taskName, config) in nativePlatforms) {
         val graalVmHome = System.getenv("GRAALVM_HOME") ?: "/usr/local/graalvm"
         executable = "$graalVmHome/bin/native-image"
 
-        // Build args
-        val buildArgsList = listOf(
-            "--platform=$os/$arch",
-            "-Dfile.encoding=UTF-8",
-            "--enable-native-access=ALL-UNNAMED",
-            "-march=compatibility"
-        )
-
         // Get classpath from the runtime classpath
         val runtimeCp = configurations.runtimeClasspath.get()
         val classpathFiles = runtimeCp.resolve().joinToString(File.pathSeparator) { it.absolutePath }
 
         args("-cp", classpathFiles)
-        args(*buildArgsList.toTypedArray())
+        args("--platform", "$os/$arch")
+        args("-Dfile.encoding=UTF-8")
+        args("--enable-native-access=ALL-UNNAMED")
+        args("-march=compatibility")
         args("-o", file("$outputDir/$binaryName").absolutePath)
         args("org.asamk.signal.Main")
 
