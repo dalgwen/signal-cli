@@ -17,13 +17,8 @@ jobs:
   build:
     uses: ./build.yml
 
-  build-native:
-    uses: ./build.yml
-    with:
-      build-native: true
-
   release:
-    needs: [build, build-native]
+    needs: [build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -61,6 +56,7 @@ jobs:
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_CLI_BIN: $(which gh)
 
   build-container:
     needs: release
