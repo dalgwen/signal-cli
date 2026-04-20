@@ -5,7 +5,6 @@ plugins {
     application
     eclipse
     `check-lib-versions`
-    id("org.graalvm.buildtools.native") version "0.10.6"
 }
 
 allprojects {
@@ -29,42 +28,49 @@ application {
     applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
 }
 
-graalvmNative {
-    toolchainDetection.set(true)
-    binaries {
-        create("linuxAmd64") {
-            buildArgs("--platform=linux/amd64", "-march=compatibility")
-            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
-            resources { autodetect() }
-        }
-        create("linuxArm64") {
-            buildArgs("--platform=linux/aarch64", "-march=arm64")
-            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
-            resources { autodetect() }
-        }
-        create("macosArm64") {
-            buildArgs("--platform=darwin/aarch64", "-march=arm64")
-            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
-            resources { autodetect() }
-        }
-        create("macosAmd64") {
-            buildArgs("--platform=darwin/amd64", "-march=compatibility")
-            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
-            resources { autodetect() }
-        }
-        create("windowsAmd64") {
-            buildArgs("--platform=windows/amd64", "-march=compatibility")
-            buildArgs("-Dfile.encoding=UTF-8", "--enable-native-access=ALL-UNNAMED")
-            resources { autodetect() }
-        }
-        // Force eager realization of all binaries so Gradle registers tasks
-        all { b -> println("Binary: ${b.name}") }
-    }
-}
+// Platform configurations for native image builds
+val nativePlatforms = mapOf(
+    "LinuxAmd64"    to Triple("linux", "amd64", "signal-cli"),
+    "LinuxArm64"    to Triple("linux", "aarch64", "signal-cli"),
+    "MacosArm64"    to Triple("darwin", "aarch64", "signal-cli"),
+    "MacosAmd64"    to Triple("darwin", "amd64", "signal-cli"),
+    "WindowsAmd64"  to Triple("windows", "amd64", "signal-cli.exe")
+)
 
-// Workaround: directly reference binary names to force task registration
-afterEvaluate {
-    println("Forcing binary task registration for: ${project.extensions.getByType(org.graalvm.buildtools.gradle.dsl.GraalVMExtension::class.java).binaries.names}")
+for ((taskName, config) in nativePlatforms) {
+    val (os, arch, binaryName) = config
+    val outputDir = "build/native/nativeCompile"
+
+    tasks.register<Exec>("nativeCompile$taskName") {
+        group = "build"
+        description = "Compiles a native image for $taskName"
+
+        doFirst {
+            file(outputDir).mkdirs()
+        }
+
+        val graalVmHome = System.getenv("GRAALVM_HOME") ?: "/usr/local/graalvm"
+        executable = "$graalVmHome/bin/native-image"
+
+        // Build args
+        val buildArgsList = listOf(
+            "--platform=$os/$arch",
+            "-Dfile.encoding=UTF-8",
+            "--enable-native-access=ALL-UNNAMED",
+            "-march=compatibility"
+        )
+
+        // Get classpath
+        val runtimeCp = configurations.runtimeClasspath.get()
+        val classpathFiles = runtimeCp.resolve().joinToString(File.pathSeparator) { it.absolutePath }
+
+        args("-cp", classpathFiles)
+        args(*buildArgsList.toTypedArray())
+        args("-o", file("$outputDir/$binaryName").absolutePath)
+        args("org.asamk.signal.Main")
+
+        environment("JAVA_HOME", graalVmHome)
+    }
 }
 
 val artifactType = Attribute.of("artifactType", String::class.java)
@@ -76,145 +82,6 @@ dependencies {
     artifactTypes.getByName("jar") {
         attributes.attribute(minified, false)
     }
-}
 
-configurations.runtimeClasspath.configure {
-    attributes {
-        attribute(minified, true)
-    }
-}
-val excludePatterns = mapOf(
-    "libsignal-client" to setOf(
-        "libsignal_jni_testing_amd64.so",
-        "signal_jni_testing_amd64.dll",
-        "libsignal_jni_testing_amd64.dylib",
-        "libsignal_jni_testing_aarch64.dylib",
-    )
-)
-
-val schemaAnnotationProcessor by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
-
-dependencies {
-    registerTransform(JarFileExcluder::class) {
-        from.attribute(minified, false).attribute(artifactType, "jar")
-        to.attribute(minified, true).attribute(artifactType, "jar")
-
-        parameters {
-            excludeFilesByArtifact = excludePatterns
-        }
-    }
-
-    schemaAnnotationProcessor(libs.micronaut.json.schema.processor)
-    schemaAnnotationProcessor(libs.micronaut.inject.java)
-    implementation(libs.bouncycastle)
-    implementation(libs.jackson.databind)
-    implementation(libs.argparse4j)
-    implementation(libs.dbusjava)
-    implementation(libs.slf4j.api)
-    implementation(libs.slf4j.jul)
-    implementation(libs.logback)
-    implementation(libs.zxing)
-    implementation(libs.micronaut.json.schema.annotations)
-    if (gradle.startParameter.taskNames.any { it.contains("jsonSchemas") }) {
-        implementation(libs.micronaut.json.schema.generator)
-    }    
-    implementation(project(":libsignal-cli"))
-
-    testImplementation(libs.junit.jupiter)
-    testImplementation(platform(libs.junit.jupiter.bom))
-    testRuntimeOnly(libs.junit.launcher)
-}
-
-tasks.named<Test>("test") {
-    useJUnitPlatform()
-}
-
-configurations {
-    implementation {
-        resolutionStrategy.failOnVersionConflict()
-    }
-}
-
-
-tasks.withType<AbstractArchiveTask>().configureEach {
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
-}
-
-tasks.withType<JavaCompile> {
-    options.encoding = "UTF-8"
-}
-
-tasks.withType<Jar> {
-    manifest {
-        attributes(
-            "Implementation-Title" to project.name,
-            "Implementation-Version" to project.version,
-            "Main-Class" to application.mainClass.get(),
-            "Enable-Native-Access" to "ALL-UNNAMED",
-        )
-    }
-}
-
-tasks.register("fatJar", type = Jar::class) {
-    archiveBaseName.set("${project.name}-fat")
-    exclude(
-        "META-INF/*.SF",
-        "META-INF/**/*.MF",
-        "META-INF/*.DSA",
-        "META-INF/*.RSA",
-        "META-INF/NOTICE*",
-        "META-INF/LICENSE*",
-        "META-INF/INDEX.LIST",
-        "**/module-info.class",
-    )
-    duplicatesStrategy = DuplicatesStrategy.WARN
-    doFirst {
-        from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
-    }
-    with(tasks.jar.get())
-}
-
-tasks.register("writeLibsignalVersion") {
-    doLast {
-        val resolutionResult = configurations.runtimeClasspath.get().incoming.resolutionResult
-        val libsignalDep =
-            resolutionResult.allDependencies.find { dep -> dep.requested is ModuleComponentSelector && (dep.requested as ModuleComponentSelector).group == "org.signal" && (dep.requested as ModuleComponentSelector).moduleIdentifier.name == "libsignal-client" }
-        if (libsignalDep != null) {
-            val version = (libsignalDep.requested as ModuleComponentSelector).version
-            file("libsignal-version").writeText(version + "\n")
-        } else {
-            throw GradleException("Could not find libsignal-client dependency")
-        }
-    }
-}
-
-tasks.register<JavaCompile>("jsonSchemas") {
-    dependsOn(tasks.compileJava)
-    val schemaBaseUri = "http://localhost:8080/schemas/"
-    source = sourceSets.main.get().java
-    include("org/asamk/signal/json/**/*.java")
-    classpath = sourceSets.main.get().compileClasspath + files(sourceSets.main.get().java.destinationDirectory)
-    destinationDirectory.set(layout.buildDirectory.dir("generated"))
-    options.annotationProcessorPath = schemaAnnotationProcessor
-    options.compilerArgs.addAll(
-        listOf(
-            "-Amicronaut.processing.group=org.asamk",
-            "-Amicronaut.processing.module=signal-cli",
-            "-Amicronaut.processing.annotations=org.asamk.signal.json.*",
-            "-Amicronaut.jsonschema.baseUri=$schemaBaseUri",
-        )
-    )
-    doLast {
-        fileTree(destinationDirectory.get().dir("META-INF/schemas").asFile) {
-            include("*.schema.json")
-        }.forEach { schemaFile ->
-            val normalized = schemaFile.readText().replace("\"$schemaBaseUri/", "\"")
-            val prettyJson = JsonOutput.prettyPrint(normalized)
-            schemaFile.writeText("$prettyJson\n")
-        }
-    }
+    add("releaseRuntimeClasspath", configurations.archivesArtifacts.get())
 }
