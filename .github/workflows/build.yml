@@ -117,6 +117,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
+          echo "Packaging for ${{ matrix.os }} (${{ matrix.artifact_name }})"
+          ls -la build/native/nativeCompile/ 2>&1 || echo "nativeCompile dir not found"
           if [[ "${{ matrix.os }}" == windows* ]]; then
             strip --strip-all \
               --remove-section=.note.gnu.build-id \
