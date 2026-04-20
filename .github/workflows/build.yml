@@ -63,7 +63,7 @@ jobs:
         uses: graalvm/setup-graalvm@v1
         with:
           version: '25.0.2'
-          java: '25'
+          java-version: '25'
           arch: ${{ matrix.arch }}
       - name: Build native image
         run: |
