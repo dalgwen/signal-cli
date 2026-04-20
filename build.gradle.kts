@@ -189,7 +189,7 @@ graalvmNative {
         toolchainDetection.set(false)
     }
     binaries {
-        this@ binaries.getByName("main").run {
+        getByName("main").run {
             buildArgs.add("-Dfile.encoding=UTF-8")
             buildArgs.add("-J-Dfile.encoding=UTF-8")
             buildArgs.add("--enable-native-access=ALL-UNNAMED")
