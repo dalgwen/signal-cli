@@ -13,22 +13,27 @@ jobs:
   build:
     strategy:
       matrix:
-        # java="25" is the LTS Java version used in reproducible builds script (default in Containerfile).
-        # More Java versions can be added to test compatibility, eg. "26".
-        java: ["25", "26"]
-    runs-on: ubuntu-latest
+        include:
+          - os: ubuntu-latest        # linux/amd64
+            arch: amd64
+          - os: ubuntu-24.04-arm     # linux/arm64 (GitHub hosted)
+            arch: arm64
+          - os: macos-latest         # darwin/arm64
+            arch: macos-arm64
+          - os: macos-13             # darwin/amd64
+            arch: macos-amd64
+          - os: windows-latest       # windows/amd64
+            arch: windows-amd64
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
       - name: Build
         run: |
-          if [ "${{ matrix.java }}" != "25" ]; then
-            export OVERRIDE_JAVA_VERSION="${{ matrix.java }}"
-          fi
           ./reproducible-builds/build.sh
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: signal-cli-archive-${{ matrix.java }}
+          name: signal-cli-archive-${{ matrix.os }}
           path: dist/*
 
   build-client:
