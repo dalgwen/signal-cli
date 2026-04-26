@@ -1,6 +1,6 @@
 ARG GRAALVM_TAG="25@sha256:38f835ccb37d4a106c37376a98e8713999077a8c8173d9876505f77da438332c"
 
-FROM container-registry.oracle.com/graalvm/native-image:$GRAALVM_TAG
+FROM container-registry.oracle.com/graalvm/native-image-community:$GRAALVM_TAG
 ARG SOURCE_DATE_EPOCH="1776889382"
 ENV SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH
 ENV LANG=C.UTF-8
