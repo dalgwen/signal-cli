@@ -18,12 +18,6 @@ jobs:
             arch: amd64
           - os: ubuntu-24.04-arm     # linux/arm64 (GitHub hosted)
             arch: arm64
-          - os: macos-latest         # darwin/arm64
-            arch: macos-arm64
-          - os: macos-13             # darwin/amd64
-            arch: macos-amd64
-          - os: windows-latest       # windows/amd64
-            arch: windows-amd64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
