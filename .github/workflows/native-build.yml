@@ -1,0 +1,190 @@
+name: GraalVM Native Build
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  build-native:
+    name: Build (${{ matrix.os-label }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os-label: linux-x64
+            runner: ubuntu-22.04
+            binary: signal-cli
+            archive-suffix: Linux-x64-native.tar.gz
+
+          - os-label: linux-arm64
+            runner: ubuntu-22.04-arm
+            binary: signal-cli
+            archive-suffix: Linux-arm64-native.tar.gz
+
+          - os-label: macos-arm
+            runner: macos-latest       # arm runner
+            binary: signal-cli
+            archive-suffix: macOS-arm-native.tar.gz
+
+          - os-label: windows-x64
+            runner: windows-latest
+            archive-suffix: Windows-x64-native.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm'
+
+      - name: Make Gradle wrapper executable (Unix)
+        if: runner.os != 'Windows'
+        run: chmod +x ./gradlew
+
+      # ── Windows: Visual Studio native tools required by GraalVM ──────────
+      - name: Configure Windows build environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # ── Resolve VERSION and SOURCE_DATE_EPOCH ────────────────────────────
+      # VERSION   : read from Gradle project properties.
+      # SOURCE_DATE_EPOCH : timestamp of the last git commit — standard
+      #   reproducible-builds convention (https://reproducible-builds.org).
+
+      - name: Resolve build metadata (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          VERSION=$(./gradlew properties --no-daemon -q | grep "^version:" | awk '{print $2}')
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          echo "VERSION=${VERSION}"                   >> "$GITHUB_ENV"
+          echo "SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}" >> "$GITHUB_ENV"
+          echo "ARCHIVE_NAME=signal-cli-${VERSION}-${{ matrix.archive-suffix }}" >> "$GITHUB_ENV"
+
+      - name: Resolve build metadata (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = (./gradlew properties --no-daemon -q |
+                      Select-String "^version:").ToString().Split(" ")[1].Trim()
+          $epoch   = git log -1 --format=%ct
+          "VERSION=$version"                     | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "SOURCE_DATE_EPOCH=$epoch"             | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "ARCHIVE_NAME=signal-cli-$version-${{ matrix.archive-suffix }}" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      # ── Resolve dependencies & strip bundled native libs ───────────────────
+      # Download all dependencies without compiling, so we can remove the
+      # bundled native libraries from libsignal-client before native-image
+      # performs its static analysis pass.
+      - name: Resolve Gradle dependencies
+        run: ./gradlew dependencies --no-daemon
+
+      # The JAR ships .dll / .dylib / .so for all platforms inside it.
+      # We remove them because the correct platform library is injected at
+      # runtime. Leaving them in would cause native-image to attempt to
+      # process them during static analysis.
+      - name: Remove bundled native libs from libsignal-client (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          find ~/.gradle -name "libsignal-client*.jar" -exec zip -d {} "*.dll" \; || true
+          find ~/.gradle -name "libsignal-client*.jar" -exec zip -d {} "*.dylib" \; || true
+          find ~/.gradle -name "libsignal-client*.jar" -exec zip -d {} "*.so" \; || true
+
+      - name: Remove bundled native libs from libsignal-client (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $extensions = @(".dll", ".dylib", ".so")
+          Get-ChildItem -Path "$env:USERPROFILE\.gradle" -Recurse -Filter "libsignal-client*.jar" |
+          ForEach-Object {
+            $jarPath = $_.FullName
+            $zip = [System.IO.Compression.ZipFile]::Open($jarPath, 'Update')
+            try {
+              $toDelete = $zip.Entries | Where-Object {
+                $extensions -contains [System.IO.Path]::GetExtension($_.Name)
+              } | ForEach-Object { $_ }  # materialize before modifying
+              foreach ($entry in $toDelete) {
+                Write-Host "Removing $($entry.FullName) from $jarPath"
+                $entry.Delete()
+              }
+            } finally {
+              $zip.Dispose()
+            }
+          }
+
+      # ── Compile ──────────────────────────────────────────────────────────
+      # GRADLE_OPTS carries the -D flag instead of passing it inline, because
+      # PowerShell on Windows misparses -Dkey=value in multi-line run blocks,
+      # treating it as a separate task name rather than a JVM system property.
+      - name: Build native binary
+        env:
+          GRADLE_OPTS: >-
+            -Dkotlin.compiler.execution.strategy=in-process
+            -Dorg.gradle.caching=false
+          ORG_GRADLE_PROJECT_org.gradle.java.installations.auto-download: "false"
+          ORG_GRADLE_PROJECT_org.gradle.java.installations.auto-detect: "false"
+        run: >
+          ./gradlew nativeCompile
+          -x test
+          --no-daemon
+          --max-workers=1
+          --no-build-cache
+
+      # ── Strip (Linux only) ───────────────────────────────────────────────
+      # strip is GNU binutils: removes debug symbols and build-specific ELF
+      # metadata for a smaller, more reproducible binary.
+      # Not available with the same flags on macOS (Apple strip), nor on Windows.
+      - name: Strip binary (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          strip --strip-all \
+            --remove-section=.note.gnu.build-id \
+            --remove-section=.comment \
+            --remove-section=.gnu_debuglink \
+            --remove-section=.annobin.notes \
+            --remove-section=.gnu.build.attributes \
+            --remove-section=.note.ABI-tag \
+            build/native/nativeCompile/signal-cli
+
+      - name: Make binary executable (Unix)
+        if: runner.os != 'Windows'
+        run: chmod +x build/native/nativeCompile/signal-cli
+
+      # ── Archive ──────────────────────────────────────────────────────────
+      # Unix: reproducible .tar.gz — --sort, --mtime and --numeric-owner
+      #   ensure the archive is byte-for-byte identical across machines.
+      # Windows: BSD tar (libarchive, bundled with Windows 10+) supports -czf
+      #   but not the GNU reproducibility flags, so the archive is not
+      #   byte-for-byte reproducible. Still a perfectly valid .tar.gz.
+
+      - name: Create tar.gz archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          BINARY="signal-cli"
+          TAR_FILE="build/signal-cli-${VERSION}-${{ matrix.archive-suffix }}"
+          TAR_FILE="${TAR_FILE%.gz}"          # strip .gz — gzip adds it back
+          tar \
+            --owner=0 --group=0 --numeric-owner \
+            -cf "${TAR_FILE}" \
+            -C build/native/nativeCompile "${BINARY}"
+          gzip -n -9 "${TAR_FILE}"
+
+      - name: Create tar.gz archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # BSD tar on Windows: no GNU reproducibility flags, but produces a valid .tar.gz
+          tar -czf "build\$env:ARCHIVE_NAME" -C build\native\nativeCompile signal-cli.exe
+
+      # ── Upload artifact ──────────────────────────────────────────────────
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARCHIVE_NAME }}
+          path: build/${{ env.ARCHIVE_NAME }}
+          if-no-files-found: error
