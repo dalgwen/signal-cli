@@ -45,6 +45,9 @@ graalvmNative {
             } else {
                 toolchainDetection.set(false)
             }
+            resources.excludedPatterns.add(".*libsignal.*\\.so")
+            resources.excludedPatterns.add(".*libsignal.*\\.dylib")
+            resources.excludedPatterns.add(".*signal.*\\.dll")
         }
     }
 }
