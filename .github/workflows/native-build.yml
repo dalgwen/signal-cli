@@ -90,9 +90,13 @@ jobs:
       - name: Remove bundled native libs from libsignal-client (Unix)
         if: runner.os != 'Windows'
         run: |
-          find ~/.gradle -name "libsignal-client*.jar" -exec zip -d {} "*.dll" \; || true
-          find ~/.gradle -name "libsignal-client*.jar" -exec zip -d {} "*.dylib" \; || true
-          find ~/.gradle -name "libsignal-client*.jar" -exec zip -d {} "*.so" \; || true
+          find ~/.gradle -name "libsignal-client*.jar" | while read jar; do
+            echo "=== $jar ==="
+            echo "Size before: $(du -b "$jar" | cut -f1)"
+            unzip -l "$jar" | grep -E "\.(dll|dylib|so)$" || echo "No native libs found"
+            zip -d "$jar" "*.dll" "*.dylib" "*.so" || true
+            echo "Size after: $(du -b "$jar" | cut -f1)"
+          done
 
       - name: Remove bundled native libs from libsignal-client (Windows)
         if: runner.os == 'Windows'
