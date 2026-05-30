@@ -10,7 +10,7 @@ plugins {
 
 allprojects {
     group = "org.asamk"
-    version = "0.14.3"
+    version = "0.14.4.1"
 }
 
 java {
@@ -105,7 +105,7 @@ dependencies {
     implementation(libs.micronaut.json.schema.annotations)
     if (gradle.startParameter.taskNames.any { it.contains("jsonSchemas") }) {
         implementation(libs.micronaut.json.schema.generator)
-    }    
+    }
     implementation(project(":libsignal-cli"))
 
     testImplementation(libs.junit.jupiter)
