@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - "native_build"
-    tags:
-      - v*
 
 jobs:
   build-native:
@@ -18,21 +16,21 @@ jobs:
           - os-label: linux-x64
             runner: ubuntu-22.04
             binary: signal-cli
-            archive-suffix: Linux-x64-native.tar.gz
+            archive-suffix: x86_64-unknown-linux-gnu-native.tar.gz
 
           - os-label: linux-arm64
             runner: ubuntu-22.04-arm
             binary: signal-cli
-            archive-suffix: Linux-arm64-native.tar.gz
+            archive-suffix: aarch64-unknown-linux-gnu-native.tar.gz
 
           - os-label: macos-arm
             runner: macos-latest       # arm runner
             binary: signal-cli
-            archive-suffix: macOS-arm-native.tar.gz
+            archive-suffix: aarch64-apple-darwin-native.tar.gz
 
           - os-label: windows-x64
             runner: windows-latest
-            archive-suffix: Windows-x64-native.tar.gz
+            archive-suffix: x86_64-pc-windows-native.tar.gz
 
     steps:
       - name: Checkout
