@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.14.5] - 2026-06-11
+
+### Changed
+
+- Disable host validation when binding on 0.0.0.0
+- Use new SVR2 enclave for PINs
+
+### Fixed
+
+- Receiving unidentified sender messages after signal server change
+
 ## [0.14.4] - 2026-05-23
 
 ### Added
