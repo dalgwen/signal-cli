@@ -1,5 +1,53 @@
 # Changelog
 
+## [0.14.8] - 2026-09-10
+
+### Added
+
+- Add terminateGroup command to terminate a group for everyone
+- Include isVoiceNote in receive JSON and JSON-RPC attachment payloads
+
+### Improved
+
+- Prevent more storage sync loops
+
+### Fixed
+
+- Fix graalvm issue with image dimension probing
+- Fix issue with sticker storage sync
+
+## [0.14.7] - 2026-08-01
+
+### Added
+
+- Sync installed sticker packs via storage sync
+
+### Improved
+
+- Set width/height for outgoing image attachments (Thanks @mikesimone)
+- Update to new registration/provisioning API
+
+### Fixed
+
+- Removing self from pending group invite now works if invited via PNI
+- Correctly set needs PNI signature for recipients
+- Fix linking after previous unsuccessful link attempt
+
+## [0.14.6] - 2026-07-12
+
+### Added
+
+- New `sendStory` command to post file attachment stories to "My Story" or to a group via `--group-id`
+
+### Improved
+
+- The account parameter `-a` now supports ACI in addition to phone number
+- Disabling read receipts in configuration now prevents sending read receipts (only sync message to linked devices is still sent)
+
+### Fixed
+
+- Sending to large groups is no longer slowed down by members that are already known to be unregistered; they are skipped instead of being retried via the legacy 1:1 send path on every send.
+
 ## [0.14.5] - 2026-06-11
 
 ### Changed

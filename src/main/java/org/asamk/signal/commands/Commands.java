@@ -52,6 +52,7 @@ public class Commands {
         addCommand(new SendPollTerminateCommand());
         addCommand(new SendReactionCommand());
         addCommand(new SendReceiptCommand());
+        addCommand(new SendStoryCommand());
         addCommand(new SendSyncRequestCommand());
         addCommand(new SendTypingCommand());
         addCommand(new SendUnpinMessageCommand());
@@ -60,6 +61,7 @@ public class Commands {
         addCommand(new SubmitRateLimitChallengeCommand());
         addCommand(new StartChangeNumberCommand());
         addCommand(new StartLinkCommand());
+        addCommand(new TerminateGroupCommand());
         addCommand(new TrustCommand());
         addCommand(new UnblockCommand());
         addCommand(new UnregisterCommand());

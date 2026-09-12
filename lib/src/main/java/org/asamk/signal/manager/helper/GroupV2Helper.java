@@ -264,6 +264,9 @@ class GroupV2Helper {
         var pendingMembersList = groupInfoV2.getGroup().pendingMembers;
         final var selfAci = getSelfAci();
         var selfPendingMember = DecryptedGroupUtil.findPendingByServiceId(pendingMembersList, selfAci);
+        if (selfPendingMember.isEmpty()) {
+            selfPendingMember = DecryptedGroupUtil.findPendingByServiceId(pendingMembersList, getSelfPni());
+        }
 
         if (selfPendingMember.isPresent()) {
             return revokeInvites(groupInfoV2, Set.of(selfPendingMember.get()));
@@ -540,6 +543,14 @@ class GroupV2Helper {
         return commitChange(groupInfoV2, change);
     }
 
+    Pair<DecryptedGroup, GroupChangeResponse> terminateGroup(
+            GroupInfoV2 groupInfoV2
+    ) throws IOException {
+        final GroupsV2Operations.GroupOperations groupOperations = getGroupOperations(groupInfoV2);
+        final var change = groupOperations.createTerminateGroup();
+        return commitChange(groupInfoV2, change);
+    }
+
     Pair<DecryptedGroup, GroupChangeResponse> setMemberLabels(
             GroupInfoV2 groupInfoV2,
             String labelEmoji,
@@ -747,8 +758,14 @@ class GroupV2Helper {
         var authCredentialResponse = groupApiCredentials.get(todaySeconds);
         final var aci = getSelfAci();
         final var pni = getSelfPni();
+        final var authCredentialSalt = context.getAccount().getAuthCredentialSalt();
         return dependencies.getGroupsV2Api()
-                .getGroupsV2AuthorizationString(aci, pni, todaySeconds, groupSecretParams, authCredentialResponse);
+                .getGroupsV2AuthorizationString(aci,
+                        pni,
+                        authCredentialSalt,
+                        todaySeconds,
+                        groupSecretParams,
+                        authCredentialResponse);
     }
 
     private ACI getSelfAci() {

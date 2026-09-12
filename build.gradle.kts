@@ -5,12 +5,12 @@ plugins {
     application
     eclipse
     `check-lib-versions`
-    id("org.graalvm.buildtools.native") version "1.1.2"
+    id("org.graalvm.buildtools.native") version "1.1.12"
 }
 
 allprojects {
     group = "org.asamk"
-    version = "0.14.5"
+    version = "0.14.8"
 }
 
 java {
@@ -77,7 +77,7 @@ val excludePatterns = mapOf(
     )
 )
 
-val schemaAnnotationProcessor by configurations.creating {
+val schemaAnnotationProcessor = configurations.create("schemaAnnotationProcessor") {
     isCanBeConsumed = false
     isCanBeResolved = true
 }

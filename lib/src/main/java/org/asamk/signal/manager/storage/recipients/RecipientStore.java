@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,7 +52,18 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     private final Map<Long, Long> recipientsMerged = new HashMap<>();
 
-    private final Map<ServiceId, RecipientWithAddress> recipientAddressCache = Collections.synchronizedMap(new HashMap<>());
+    private static final int MAX_RECIPIENT_CACHE_SIZE = 2000;
+
+    private final Map<ServiceId, RecipientWithAddress> recipientAddressCache = Collections.synchronizedMap(new LinkedHashMap<>(
+            16,
+            0.75f,
+            true) {
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<ServiceId, RecipientWithAddress> eldest) {
+            return size() > MAX_RECIPIENT_CACHE_SIZE;
+        }
+    });
 
     public static void createSql(Connection connection) throws SQLException {
         // When modifying the CREATE statement here, also add a migration in AccountDatabase.java
@@ -70,6 +82,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                                       profile_key BLOB,
                                       profile_key_credential BLOB,
                                       needs_pni_signature INTEGER NOT NULL DEFAULT FALSE,
+                                      pni_signature_verified INTEGER NOT NULL DEFAULT FALSE,
                                     
                                       given_name TEXT,
                                       family_name TEXT,
@@ -83,6 +96,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                                       expiration_time_version INTEGER DEFAULT 1 NOT NULL,
                                       mute_until INTEGER NOT NULL DEFAULT 0,
                                       blocked INTEGER NOT NULL DEFAULT FALSE,
+                                      blocked_at INTEGER NOT NULL DEFAULT 0,
                                       archived INTEGER NOT NULL DEFAULT FALSE,
                                       profile_sharing INTEGER NOT NULL DEFAULT FALSE,
                                       hide_story INTEGER NOT NULL DEFAULT FALSE,
@@ -338,7 +352,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
     public List<Pair<RecipientId, Contact>> getContacts() {
         final var sql = (
                 """
-                SELECT r._id, r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.archived, r.hidden, r.unregistered_timestamp
+                SELECT r._id, r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.blocked_at, r.archived, r.hidden, r.unregistered_timestamp
                 FROM %s r
                 WHERE (r.number IS NOT NULL OR r.pni IS NOT NULL OR r.aci IS NOT NULL) AND %s AND r.hidden = FALSE
                 """
@@ -362,7 +376,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 SELECT r._id,
                        r.number, r.aci, r.pni, r.username,
                        r.profile_key, r.profile_key_credential,
-                       r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.archived, r.hidden, r.unregistered_timestamp,
+                       r.pni_signature_verified,
+                       r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.blocked_at, r.archived, r.hidden, r.unregistered_timestamp,
                        r.profile_last_update_timestamp, r.profile_given_name, r.profile_family_name, r.profile_about, r.profile_about_emoji, r.profile_avatar_url_path, r.profile_mobile_coin_address, r.profile_unidentified_access_mode, r.profile_capabilities, r.profile_phone_number_sharing,
                        r.discoverable,
                        r.storage_record
@@ -382,7 +397,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 SELECT r._id,
                        r.number, r.aci, r.pni, r.username,
                        r.profile_key, r.profile_key_credential,
-                       r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.archived, r.hidden, r.unregistered_timestamp,
+                       r.pni_signature_verified,
+                       r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.blocked_at, r.archived, r.hidden, r.unregistered_timestamp,
                        r.profile_last_update_timestamp, r.profile_given_name, r.profile_family_name, r.profile_about, r.profile_about_emoji, r.profile_avatar_url_path, r.profile_mobile_coin_address, r.profile_unidentified_access_mode, r.profile_capabilities, r.profile_phone_number_sharing,
                        r.discoverable,
                        r.storage_record
@@ -431,7 +447,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 SELECT r._id,
                        r.number, r.aci, r.pni, r.username,
                        r.profile_key, r.profile_key_credential,
-                       r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.archived, r.hidden, r.unregistered_timestamp,
+                       r.pni_signature_verified,
+                       r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.blocked_at, r.archived, r.hidden, r.unregistered_timestamp,
                        r.profile_last_update_timestamp, r.profile_given_name, r.profile_family_name, r.profile_about, r.profile_about_emoji, r.profile_avatar_url_path, r.profile_mobile_coin_address, r.profile_unidentified_access_mode, r.profile_capabilities, r.profile_phone_number_sharing,
                        r.discoverable,
                        r.storage_record
@@ -456,6 +473,40 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                         }
                         return r;
                     }).toList();
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed read from recipient store", e);
+        }
+    }
+
+    /**
+     * Returns the subset of the given recipients that are currently known to be
+     * unregistered (i.e. have an unregistered timestamp set).
+     * <p>
+     * These can be skipped when sending group messages; otherwise every send
+     * re-attempts them via the slow legacy 1:1 fan-out. The unregistered flag is
+     * maintained independently by profile/CDS discovery and cleared again once a
+     * recipient registers, so they are re-included automatically.
+     */
+    public Set<RecipientId> getUnregisteredRecipientIds(final Set<RecipientId> recipientIds) {
+        if (recipientIds.isEmpty()) {
+            return Set.of();
+        }
+        final var recipientIdsCommaSeparated = recipientIds.stream()
+                .map(recipientId -> String.valueOf(recipientId.id()))
+                .collect(Collectors.joining(","));
+        final var sql = (
+                """
+                SELECT r._id
+                FROM %s r
+                WHERE r.unregistered_timestamp IS NOT NULL AND r._id IN (%s)
+                """
+        ).formatted(TABLE_RECIPIENT, recipientIdsCommaSeparated);
+        try (final var connection = database.getConnection()) {
+            try (final var statement = connection.prepareStatement(sql)) {
+                try (var result = Utils.executeQueryForStream(statement, this::getRecipientIdFromResultSet)) {
+                    return result.collect(Collectors.toSet());
                 }
             }
         } catch (SQLException e) {
@@ -842,7 +893,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         final var sql = (
                 """
                 UPDATE %s
-                SET given_name = ?, family_name = ?, nick_name = ?, expiration_time = ?, expiration_time_version = ?, mute_until = ?, hide_story = ?, profile_sharing = ?, color = ?, blocked = ?, archived = ?, unregistered_timestamp = ?, nick_name_given_name = ?, nick_name_family_name = ?, note = ?, hidden = ?
+                SET given_name = ?, family_name = ?, nick_name = ?, expiration_time = ?, expiration_time_version = ?, mute_until = ?, hide_story = ?, profile_sharing = ?, color = ?, blocked = ?, blocked_at = ?, archived = ?, unregistered_timestamp = ?, nick_name_given_name = ?, nick_name_family_name = ?, note = ?, hidden = ?
                 WHERE _id = ?
                 """
         ).formatted(TABLE_RECIPIENT);
@@ -857,23 +908,47 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             statement.setBoolean(8, contact != null && contact.isProfileSharingEnabled());
             statement.setString(9, contact == null ? null : contact.color());
             statement.setBoolean(10, contact != null && contact.isBlocked());
-            statement.setBoolean(11, contact != null && contact.isArchived());
+            statement.setLong(11, contact == null ? 0 : contact.blockedAt());
+            statement.setBoolean(12, contact != null && contact.isArchived());
             if (contact == null || contact.unregisteredTimestamp() == null) {
-                statement.setNull(12, Types.INTEGER);
+                statement.setNull(13, Types.INTEGER);
             } else {
-                statement.setLong(12, contact.unregisteredTimestamp());
+                statement.setLong(13, contact.unregisteredTimestamp());
             }
-            statement.setString(13, contact == null ? null : contact.nickNameGivenName());
-            statement.setString(14, contact == null ? null : contact.nickNameFamilyName());
-            statement.setString(15, contact == null ? null : contact.note());
-            statement.setBoolean(16, contact != null && contact.isHidden());
-            statement.setLong(17, recipientId.id());
+            statement.setString(14, contact == null ? null : contact.nickNameGivenName());
+            statement.setString(15, contact == null ? null : contact.nickNameFamilyName());
+            statement.setString(16, contact == null ? null : contact.note());
+            statement.setBoolean(17, contact != null && contact.isHidden());
+            statement.setLong(18, recipientId.id());
             statement.executeUpdate();
         }
         if (contact != null && contact.unregisteredTimestamp() != null) {
-            markUnregisteredAndSplitIfNecessary(connection, recipientId);
+            markUnregisteredAndSplitIfNecessary(connection, recipientId, contact.unregisteredTimestamp());
         }
         rotateStorageId(connection, recipientId);
+    }
+
+    public void splitForStorageSyncIfNecessary(final Connection connection, final ACI aci) throws SQLException {
+        final var recipient = findByServiceId(connection, aci);
+        if (recipient.isEmpty()) {
+            return;
+        }
+
+        final var recipientId = recipient.get().id();
+        final var address = recipient.get().address();
+        if (address.pni().isEmpty() && address.number().isEmpty()) {
+            return;
+        }
+
+        logger.debug("Splitting {} for storage sync", recipientId);
+        final var splitAddress = new RecipientAddress(Optional.empty(),
+                address.pni(),
+                address.number(),
+                Optional.empty());
+        updateRecipientAddress(connection,
+                recipientId,
+                new RecipientAddress(address.aci(), Optional.empty(), Optional.empty(), address.username()));
+        resolveRecipientTrusted(connection, splitAddress);
     }
 
     public int removeStorageIdsFromLocalOnlyUnregisteredRecipients(
@@ -917,6 +992,69 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         }
     }
 
+    public void markPniSignatureVerified(final RecipientId recipientId) {
+        logger.debug("Marking {} as pni signature verified", recipientId);
+        try (final var connection = database.getConnection()) {
+            connection.setAutoCommit(false);
+            if (storePniSignatureVerified(connection, recipientId, true)) {
+                rotateStorageId(connection, recipientId);
+            }
+            connection.commit();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed update recipient store", e);
+        }
+    }
+
+    public boolean storePniSignatureVerified(
+            final Connection connection,
+            final RecipientId recipientId,
+            final boolean value
+    ) throws SQLException {
+        return storePniSignatureVerified(connection, recipientId, value, false);
+    }
+
+    private boolean storePniSignatureVerified(
+            final Connection connection,
+            final RecipientId recipientId,
+            final boolean value,
+            final boolean force
+    ) throws SQLException {
+        if (!force && isPniSignatureVerified(connection, recipientId) == value) {
+            return false;
+        }
+
+        final var sql = (
+                """
+                UPDATE %s
+                SET pni_signature_verified = ?
+                WHERE _id = ?
+                """
+        ).formatted(TABLE_RECIPIENT);
+        try (final var statement = connection.prepareStatement(sql)) {
+            statement.setBoolean(1, value);
+            statement.setLong(2, recipientId.id());
+            statement.executeUpdate();
+        }
+        return true;
+    }
+
+    private boolean isPniSignatureVerified(
+            final Connection connection,
+            final RecipientId recipientId
+    ) throws SQLException {
+        final var sql = (
+                """
+                SELECT pni_signature_verified
+                FROM %s
+                WHERE _id = ?
+                """
+        ).formatted(TABLE_RECIPIENT);
+        try (final var statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, recipientId.id());
+            return Utils.executeQuerySingleRow(statement, resultSet -> resultSet.getBoolean("pni_signature_verified"));
+        }
+    }
+
     public boolean needsPniSignature(final RecipientId recipientId) {
         try (final var connection = database.getConnection()) {
             final var sql = (
@@ -948,7 +1086,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                     if (recipientAddress.get().address().aci().isEmpty() || (
                             contact != null && contact.unregisteredTimestamp() != null
                     )) {
-                        markUnregisteredAndSplitIfNecessary(connection, recipientId);
+                        markUnregisteredAndSplitIfNecessary(connection, recipientId, System.currentTimeMillis());
                     }
                 }
             }
@@ -982,7 +1120,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             if (registered) {
                 markRegistered(connection, recipientId);
             } else {
-                markUnregisteredAndSplitIfNecessary(connection, recipientId);
+                markUnregisteredAndSplitIfNecessary(connection, recipientId, System.currentTimeMillis());
             }
             connection.commit();
         } catch (SQLException e) {
@@ -992,9 +1130,10 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
 
     private void markUnregisteredAndSplitIfNecessary(
             final Connection connection,
-            final RecipientId recipientId
+            final RecipientId recipientId,
+            final long unregisteredTimestamp
     ) throws SQLException {
-        markUnregistered(connection, recipientId);
+        markUnregistered(connection, recipientId, unregisteredTimestamp);
         final var address = resolveRecipientAddress(connection, recipientId);
         final var needSplit = address.aci().isPresent() && address.pni().isPresent();
         logger.trace("Marking unregistered recipient {} as unregistered (and split={}): {}",
@@ -1041,7 +1180,11 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         }
     }
 
-    private void markUnregistered(final Connection connection, final RecipientId recipientId) throws SQLException {
+    private void markUnregistered(
+            final Connection connection,
+            final RecipientId recipientId,
+            final long unregisteredTimestamp
+    ) throws SQLException {
         final var sql = (
                 """
                 UPDATE %s
@@ -1050,7 +1193,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 """
         ).formatted(TABLE_RECIPIENT);
         try (final var statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, System.currentTimeMillis());
+            statement.setLong(1, unregisteredTimestamp);
             statement.setLong(2, recipientId.id());
             statement.executeUpdate();
         }
@@ -1211,6 +1354,9 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             final List<RecipientId> toBeMergedRecipientIds
     ) throws SQLException {
         for (final var toBeMergedRecipientId : toBeMergedRecipientIds) {
+            if (isPniSignatureVerified(connection, toBeMergedRecipientId)) {
+                storePniSignatureVerified(connection, recipientId, true, true);
+            }
             recipientMergeHandler.mergeRecipients(connection, recipientId, toBeMergedRecipientId);
             deleteRecipient(connection, toBeMergedRecipientId);
             recipientAddressCache.entrySet().removeIf(e -> e.getValue().id().equals(toBeMergedRecipientId));
@@ -1305,7 +1451,12 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         final var sql = (
                 """
                 UPDATE %s
-                SET number = NULL, aci = NULL, pni = NULL, username = NULL, storage_id = NULL
+                SET number = NULL,
+                    aci = NULL,
+                    pni = NULL,
+                    username = NULL,
+                    storage_id = NULL,
+                    pni_signature_verified = FALSE
                 WHERE _id = ?
                 """
         ).formatted(TABLE_RECIPIENT);
@@ -1321,10 +1472,18 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             final RecipientAddress address
     ) throws SQLException {
         recipientAddressCache.entrySet().removeIf(e -> e.getValue().id().equals(recipientId));
+        final var existingAddress = resolveRecipientAddress(connection, recipientId);
+        final var keepPniSignatureVerified = Objects.equals(existingAddress.aci(), address.aci()) && Objects.equals(
+                existingAddress.pni(),
+                address.pni());
         final var sql = (
                 """
                 UPDATE %s
-                SET number = ?, aci = ?, pni = ?, username = ?
+                SET number = ?,
+                    aci = ?,
+                    pni = ?,
+                    username = ?,
+                    pni_signature_verified = ?
                 WHERE _id = ?
                 """
         ).formatted(TABLE_RECIPIENT);
@@ -1333,7 +1492,8 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             statement.setString(2, address.aci().map(ACI::toString).orElse(null));
             statement.setString(3, address.pni().map(PNI::toString).orElse(null));
             statement.setString(4, address.username().orElse(null));
-            statement.setLong(5, recipientId.id());
+            statement.setBoolean(5, keepPniSignatureVerified && isPniSignatureVerified(connection, recipientId));
+            statement.setLong(6, recipientId.id());
             statement.executeUpdate();
         }
         rotateStorageId(connection, recipientId);
@@ -1358,9 +1518,14 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
             RecipientId toBeMergedRecipientId
     ) throws SQLException {
         final var contact = getContact(connection, recipientId);
+        final var toBeMergedContact = getContact(connection, toBeMergedRecipientId);
         if (contact == null) {
-            final var toBeMergedContact = getContact(connection, toBeMergedRecipientId);
             storeContact(connection, recipientId, toBeMergedContact);
+        } else if (toBeMergedContact != null) {
+            final var mergedContact = mergeContacts(contact, toBeMergedContact);
+            if (!contact.equals(mergedContact)) {
+                storeContact(connection, recipientId, mergedContact);
+            }
         }
 
         final var profileKey = getProfileKey(connection, recipientId);
@@ -1383,6 +1548,24 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
         }
 
         recipientsMerged.put(toBeMergedRecipientId.id(), recipientId.id());
+    }
+
+    static Contact mergeContacts(final Contact primary, final Contact secondary) {
+        final var profileSharingEnabled = primary.isProfileSharingEnabled() || secondary.isProfileSharingEnabled();
+        return Contact.newBuilder(primary)
+                .withGivenName(secondary.givenName())
+                .withFamilyName(secondary.familyName())
+                .withMessageExpirationTime(primary.messageExpirationTime() > 0
+                        ? primary.messageExpirationTime()
+                        : secondary.messageExpirationTime())
+                .withMessageExpirationTimeVersion(Math.max(primary.messageExpirationTimeVersion(),
+                        secondary.messageExpirationTimeVersion()))
+                .withMuteUntil(primary.muteUntil() > 0 ? primary.muteUntil() : secondary.muteUntil())
+                .withIsBlocked(primary.isBlocked() || secondary.isBlocked())
+                .withBlockedAt(Math.max(primary.blockedAt(), secondary.blockedAt()))
+                .withIsProfileSharingEnabled(profileSharingEnabled)
+                .withIsHidden(profileSharingEnabled ? false : primary.isHidden())
+                .build();
     }
 
     private Optional<RecipientWithAddress> findByNumber(
@@ -1464,7 +1647,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
     private Contact getContact(final Connection connection, final RecipientId recipientId) throws SQLException {
         final var sql = (
                 """
-                SELECT r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.archived, r.hidden, r.unregistered_timestamp
+                SELECT r.given_name, r.family_name, r.nick_name, r.nick_name_given_name, r.nick_name_family_name, r.note, r.expiration_time, r.expiration_time_version, r.mute_until, r.hide_story, r.profile_sharing, r.color, r.blocked, r.blocked_at, r.archived, r.hidden, r.unregistered_timestamp
                 FROM %s r
                 WHERE r._id = ? AND (%s)
                 """
@@ -1551,6 +1734,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 getProfileFromResultSet(resultSet),
                 getDiscoverableFromResultSet(resultSet),
                 getUnregisteredTimestampFromResultSet(resultSet),
+                resultSet.getBoolean("pni_signature_verified"),
                 getStorageRecordFromResultSet(resultSet));
     }
 
@@ -1568,6 +1752,7 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 resultSet.getLong("mute_until"),
                 resultSet.getBoolean("hide_story"),
                 resultSet.getBoolean("blocked"),
+                resultSet.getLong("blocked_at"),
                 resultSet.getBoolean("archived"),
                 resultSet.getBoolean("profile_sharing"),
                 resultSet.getBoolean("hidden"),
@@ -1606,9 +1791,9 @@ public class RecipientStore implements RecipientIdCreator, RecipientResolver, Re
                 profileCapabilities == null
                         ? Set.of()
                         : Arrays.stream(profileCapabilities.split(","))
-                          .map(Profile.Capability::valueOfOrNull)
-                          .filter(Objects::nonNull)
-                          .collect(Collectors.toSet()),
+                                .map(Profile.Capability::valueOfOrNull)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toSet()),
                 PhoneNumberSharingMode.valueOfOrNull(resultSet.getString("profile_phone_number_sharing")));
     }
 

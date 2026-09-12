@@ -15,6 +15,7 @@ public record Contact(
         long muteUntil,
         boolean hideStory,
         boolean isBlocked,
+        long blockedAt,
         boolean isArchived,
         boolean isProfileSharingEnabled,
         boolean isHidden,
@@ -34,6 +35,7 @@ public record Contact(
                 builder.muteUntil,
                 builder.hideStory,
                 builder.isBlocked,
+                builder.blockedAt,
                 builder.isArchived,
                 builder.isProfileSharingEnabled,
                 builder.isHidden,
@@ -58,6 +60,7 @@ public record Contact(
         builder.muteUntil = copy.muteUntil();
         builder.hideStory = copy.hideStory();
         builder.isBlocked = copy.isBlocked();
+        builder.blockedAt = copy.blockedAt();
         builder.isArchived = copy.isArchived();
         builder.isProfileSharingEnabled = copy.isProfileSharingEnabled();
         builder.isHidden = copy.isHidden();
@@ -80,6 +83,21 @@ public record Contact(
         return givenName + " " + familyName;
     }
 
+    public String getDisplayNickname() {
+        final var noNickGivenName = Util.isEmpty(nickNameGivenName);
+        final var noNickFamilyName = Util.isEmpty(nickNameFamilyName);
+
+        if (noNickGivenName && noNickFamilyName) {
+            return null;
+        } else if (noNickGivenName) {
+            return nickNameFamilyName;
+        } else if (noNickFamilyName) {
+            return nickNameGivenName;
+        }
+
+        return nickNameGivenName + " " + nickNameFamilyName;
+    }
+
     public static final class Builder {
 
         private String givenName;
@@ -94,6 +112,7 @@ public record Contact(
         private long muteUntil;
         private boolean hideStory;
         private boolean isBlocked;
+        private long blockedAt;
         private boolean isArchived;
         private boolean isProfileSharingEnabled;
         private boolean isHidden;
@@ -162,7 +181,17 @@ public record Contact(
         }
 
         public Builder withIsBlocked(final boolean val) {
+            if (val && !isBlocked) {
+                blockedAt = System.currentTimeMillis();
+            } else if (!val) {
+                blockedAt = 0;
+            }
             isBlocked = val;
+            return this;
+        }
+
+        public Builder withBlockedAt(final long val) {
+            blockedAt = val;
             return this;
         }
 

@@ -632,6 +632,20 @@ Specify the timestamp of the message to which to react.
 *--type* TYPE::
 Specify the receipt type, either `read` (the default) or `viewed`.
 
+=== sendStory
+
+Post a file attachment story to your Story, visible to all contacts.
+
+*-a* ATTACHMENT, *--attachment* ATTACHMENT::
+Specify the file path to the image or video to post as a story.
+
+*-g* GROUP, *--group-id* GROUP::
+Specify a group to post the story to.
+Without this flag, the story is posted to "My Story".
+
+*--no-replies*::
+Disable replies on this story. By default, replies are allowed.
+
 === sendTyping
 
 Send typing message to trigger a typing indicator for the recipient.
@@ -771,6 +785,16 @@ Specify the recipient group ID in base64 encoding.
 
 *--delete*::
 Delete local group data completely after quitting group.
+
+=== terminateGroup
+
+Permanently terminate a group for all members.
+This requires admin privileges.
+Afterwards no member (not even an admin) can send messages or start calls in the group; members keep access to the existing message history.
+Only supported for Signal group v2 groups.
+
+*-g* GROUP, *--group-id* GROUP::
+Specify the group ID in base64 encoding.
 
 === listGroups
 

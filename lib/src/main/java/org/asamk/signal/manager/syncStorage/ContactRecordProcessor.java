@@ -24,8 +24,10 @@ import org.whispersystems.signalservice.internal.storage.protos.ContactRecord.Id
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import okio.ByteString;
@@ -46,14 +48,67 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
     private final SignalAccount account;
     private final Connection connection;
     private final JobExecutor jobExecutor;
+    private final Set<StorageId> identityConflictsPendingRepair;
 
-    public ContactRecordProcessor(SignalAccount account, Connection connection, final JobExecutor jobExecutor) {
+    public ContactRecordProcessor(
+            SignalAccount account,
+            Connection connection,
+            final JobExecutor jobExecutor,
+            final Set<StorageId> identityConflictsPendingRepair
+    ) {
         this.account = account;
         this.connection = connection;
         this.jobExecutor = jobExecutor;
+        this.identityConflictsPendingRepair = identityConflictsPendingRepair;
         this.selfAci = account.getAci();
         this.selfPni = account.getPni();
         this.selfNumber = account.getNumber();
+    }
+
+    public void prepare(final Collection<SignalContactRecord> remoteRecords) throws SQLException {
+        for (final var remoteRecord : remoteRecords) {
+            if (isInvalid(remoteRecord)) {
+                continue;
+            }
+            final var remote = remoteRecord.getProto();
+            final var aci = ACI.parseOrNull(remote.aci, remote.aciBinary);
+            final var pni = PNI.parseOrNull(remote.pni, remote.pniBinary);
+            if (shouldSplitForStorageSync(remote.unregisteredAtTimestamp, aci, pni, remote.e164)) {
+                account.getRecipientStore().splitForStorageSyncIfNecessary(connection, aci);
+            }
+        }
+    }
+
+    static boolean shouldSplitForStorageSync(
+            final long unregisteredAtTimestamp,
+            final ACI aci,
+            final PNI pni,
+            final String e164
+    ) {
+        return unregisteredAtTimestamp > 0 && aci != null && pni == null && e164.isEmpty();
+    }
+
+    static boolean shouldUseRemoteIdentityKey(
+            final boolean isPrimaryDevice,
+            final boolean statesDiffer,
+            final int remoteIdentityKeySize,
+            final int localIdentityKeySize,
+            final long localUnregisteredAtTimestamp,
+            final boolean unrepairableIdentityKeyConflict
+    ) {
+        return remoteIdentityKeySize > 0 && (
+                statesDiffer || localIdentityKeySize == 0 || localUnregisteredAtTimestamp > 0 || (
+                        unrepairableIdentityKeyConflict && !isPrimaryDevice
+                )
+        );
+    }
+
+    @Override
+    protected String describeRecord(final SignalContactRecord record) {
+        final var proto = record.getProto();
+        final var aci = ACI.parseOrNull(proto.aci, proto.aciBinary);
+        final var pni = PNI.parseOrNull(proto.pni, proto.pniBinary);
+        return "[" + firstNonNull(aci, pni) + "]";
     }
 
     /**
@@ -117,32 +172,40 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
 
         IdentityState identityState;
         ByteString identityKey;
-        if (remote.identityKey.size() > 0 && (
-                !account.isPrimaryDevice()
-                        || remote.identityState != local.identityState
-                        || local.identityKey.size() == 0
 
-        )) {
-            identityState = remote.identityState;
-            identityKey = remote.identityKey;
-        } else {
-            identityState = local.identityState;
-            identityKey = local.identityKey.size() > 0 ? local.identityKey : ByteString.EMPTY;
-        }
-
+        // Parse ACI/PNI first so we can determine if contact has identity
         final var localAci = ACI.parseOrNull(local.aci, local.aciBinary);
         final var localPni = PNI.parseOrNull(local.pni, local.pniBinary);
         final var remoteAci = ACI.parseOrNull(remote.aci, remote.aciBinary);
         final var remotePni = PNI.parseOrNull(remote.pni, remote.pniBinary);
 
-        if (localAci != null
-                && local.identityKey.size() > 0
-                && remote.identityKey.size() > 0
-                && !local.identityKey.equals(remote.identityKey)) {
-            logger.debug("The local and remote identity keys do not match for {}. Enqueueing a profile fetch.",
-                    localAci);
-            final var address = getRecipientAddress(local);
-            jobExecutor.enqueueJob(new DownloadProfileJob(address));
+        final var hasLocalIdentity = localAci != null || localPni != null;
+        final var hasRemoteIdentity = remoteAci != null || remotePni != null;
+
+        final var remoteIdentityKeySize = remote.identityKey.size();
+        final var localIdentityKeySize = local.identityKey.size();
+        final var statesDiffer = remote.identityState != local.identityState;
+        final var identityKeysExistAndConflict = remoteIdentityKeySize > 0
+                && localIdentityKeySize > 0
+                && !remote.identityKey.equals(local.identityKey);
+        final var conflictAci = firstNonNull(localAci, remoteAci);
+        final var unrepairableIdentityKeyConflict = identityKeysExistAndConflict && conflictAci == null;
+
+        if (shouldUseRemoteIdentityKey(account.isPrimaryDevice(),
+                statesDiffer,
+                remoteIdentityKeySize,
+                localIdentityKeySize,
+                local.unregisteredAtTimestamp,
+                unrepairableIdentityKeyConflict)) {
+            identityState = remote.identityState;
+            identityKey = remote.identityKey;
+        } else {
+            identityState = local.identityState;
+            if (hasLocalIdentity && localIdentityKeySize > 0) {
+                identityKey = local.identityKey;
+            } else {
+                identityKey = ByteString.EMPTY;
+            }
         }
 
         PNI pni;
@@ -178,6 +241,17 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
             e164 = firstNonEmpty(remote.e164, local.e164);
         }
 
+        if (identityKeysExistAndConflict) {
+            if (conflictAci != null) {
+                logger.debug("Identity keys conflict for {}. Enqueueing a profile fetch.", conflictAci);
+                jobExecutor.enqueueJob(new DownloadProfileJob(new RecipientAddress(conflictAci, pni, e164), true));
+            } else {
+                logger.debug("Identity keys conflict for {}. No ACI, so no profile fetch is possible.", localPni);
+            }
+        } else if (identityKey.size() > 0 && remoteIdentityKeySize == 0) {
+            logger.debug("Remote identity key is missing for {}. Keeping ours.", firstNonNull(localAci, localPni));
+        }
+
         final var remoteProfileKey = remote.profileKey.size() == 0
                 || KeyUtils.profileKeyOrNull(remote.profileKey.toByteArray()) == null
                 ? ByteString.EMPTY
@@ -194,6 +268,7 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
                 .identityState(identityState)
                 .identityKey(identityKey)
                 .blocked(remote.blocked)
+                .blockedAtTimestamp(remote.blockedAtTimestamp)
                 .whitelisted(remote.whitelisted)
                 .archived(remote.archived)
                 .markedUnread(remote.markedUnread)
@@ -201,7 +276,9 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
                 .hideStory(remote.hideStory)
                 .unregisteredAtTimestamp(remote.unregisteredAtTimestamp)
                 .hidden(remote.hidden)
-                .pniSignatureVerified(remote.pniSignatureVerified || local.pniSignatureVerified)
+                .pniSignatureVerified((remote.pniSignatureVerified || local.pniSignatureVerified)
+                        && pni != null
+                        && pni.isValid())
                 .nickname(remote.nickname)
                 .note(remote.note)
                 .avatarColor(remote.avatarColor);
@@ -236,6 +313,9 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
 
         final var matchesLocal = doProtosMatch(merged, local);
         if (matchesLocal) {
+            if (identityKeysExistAndConflict && conflictAci != null) {
+                identityConflictsPendingRepair.add(localRecord.getId());
+            }
             return localRecord;
         }
 
@@ -272,7 +352,9 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
         final var contactNickGivenName = contact == null ? null : contact.nickNameGivenName();
         final var contactNickFamilyName = contact == null ? null : contact.nickNameFamilyName();
         final var contactNote = contact == null ? null : contact.note();
+        final var blockedAt = contact == null ? 0 : contact.blockedAt();
         if (blocked != contactProto.blocked
+                || blockedAt != contactProto.blockedAtTimestamp
                 || profileShared != contactProto.whitelisted
                 || archived != contactProto.archived
                 || hidden != contactProto.hidden
@@ -290,6 +372,7 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
             logger.debug("Storing new or updated contact {}", recipientId);
             final var contactBuilder = contact == null ? Contact.newBuilder() : Contact.newBuilder(contact);
             final var newContact = contactBuilder.withIsBlocked(contactProto.blocked)
+                    .withBlockedAt(contactProto.blocked ? contactProto.blockedAtTimestamp : 0)
                     .withIsProfileSharingEnabled(contactProto.whitelisted)
                     .withIsArchived(contactProto.archived)
                     .withIsHidden(contactProto.hidden)
@@ -346,6 +429,8 @@ public class ContactRecordProcessor extends DefaultStorageRecordProcessor<Signal
                 logger.warn("Received invalid contact identity key from storage");
             }
         }
+        account.getRecipientStore()
+                .storePniSignatureVerified(connection, recipientId, contactProto.pniSignatureVerified);
         account.getRecipientStore()
                 .storeStorageRecord(connection, recipientId, contactRecord.getId(), contactProto.encode());
     }

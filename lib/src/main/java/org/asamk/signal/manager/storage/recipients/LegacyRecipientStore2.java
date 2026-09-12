@@ -50,6 +50,7 @@ public class LegacyRecipientStore2 {
                             0,
                             false,
                             r.contact.blocked,
+                            0,
                             r.contact.archived,
                             r.contact.profileSharingEnabled,
                             false,
@@ -100,6 +101,7 @@ public class LegacyRecipientStore2 {
                         profile,
                         null,
                         null,
+                        false,
                         null);
             }).collect(Collectors.toMap(Recipient::getRecipientId, r -> r));
 

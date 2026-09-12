@@ -4,13 +4,17 @@ import org.asamk.signal.manager.api.GroupIdV1;
 import org.asamk.signal.manager.api.GroupIdV2;
 import org.asamk.signal.manager.api.Pair;
 import org.asamk.signal.manager.api.Profile;
+import org.asamk.signal.manager.api.StickerPackId;
 import org.asamk.signal.manager.internal.SignalDependencies;
 import org.asamk.signal.manager.storage.SignalAccount;
 import org.asamk.signal.manager.storage.recipients.RecipientId;
+import org.asamk.signal.manager.storage.stickers.StickerPack;
 import org.asamk.signal.manager.syncStorage.AccountRecordProcessor;
 import org.asamk.signal.manager.syncStorage.ContactRecordProcessor;
 import org.asamk.signal.manager.syncStorage.GroupV1RecordProcessor;
 import org.asamk.signal.manager.syncStorage.GroupV2RecordProcessor;
+import org.asamk.signal.manager.syncStorage.StickerPackRecordProcessor;
+import org.asamk.signal.manager.syncStorage.StorageSyncLoopDetector;
 import org.asamk.signal.manager.syncStorage.StorageSyncModels;
 import org.asamk.signal.manager.syncStorage.StorageSyncValidations;
 import org.asamk.signal.manager.syncStorage.WriteOperationResult;
@@ -42,6 +46,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.asamk.signal.manager.util.Utils.handleResponseException;
@@ -52,16 +57,19 @@ public class StorageHelper {
     private static final List<Integer> KNOWN_TYPES = List.of(ManifestRecord.Identifier.Type.CONTACT.getValue(),
             ManifestRecord.Identifier.Type.GROUPV1.getValue(),
             ManifestRecord.Identifier.Type.GROUPV2.getValue(),
-            ManifestRecord.Identifier.Type.ACCOUNT.getValue());
+            ManifestRecord.Identifier.Type.ACCOUNT.getValue(),
+            ManifestRecord.Identifier.Type.STICKER_PACK.getValue());
 
     private final SignalAccount account;
     private final SignalDependencies dependencies;
     private final Context context;
+    private final StorageSyncLoopDetector storageSyncLoopDetector;
 
     public StorageHelper(final Context context) {
         this.account = context.getAccount();
         this.dependencies = context.getDependencies();
         this.context = context;
+        this.storageSyncLoopDetector = new StorageSyncLoopDetector(account::isMultiDevice);
     }
 
     public void syncDataWithStorage() throws IOException {
@@ -80,6 +88,8 @@ public class StorageHelper {
         final var storageServiceRepository = dependencies.getStorageServiceRepository();
         final var result = storageServiceRepository.getStorageManifestIfDifferentVersion(storageKey,
                 localManifestVersion);
+        final var fetchedRemoteManifest = result instanceof ManifestIfDifferentVersionResult.DifferentVersion;
+        final Set<StorageId> identityConflictsPendingRepair = new HashSet<>();
 
         var needsForcePush = false;
         final var remoteManifest = switch (result) {
@@ -108,18 +118,22 @@ public class StorageHelper {
 
             if (remoteManifest.version > localManifestVersion) {
                 logger.trace("Remote version was newer, reading records.");
-                needsForcePush = readDataFromStorage(storageKey, localManifest, remoteManifest);
+                needsForcePush = readDataFromStorage(storageKey,
+                        localManifest,
+                        remoteManifest,
+                        identityConflictsPendingRepair);
             } else if (remoteManifest.version < localManifest.version) {
                 logger.debug("Remote storage manifest version was older. User might have switched accounts.");
             }
             logger.trace("Done reading data from remote storage");
 
-            readRecordsWithPreviouslyUnknownTypes(storageKey, remoteManifest);
+            readRecordsWithPreviouslyUnknownTypes(storageKey, remoteManifest, identityConflictsPendingRepair);
         }
 
         logger.trace("Adding missing storageIds to local data");
         account.getRecipientStore().setMissingStorageIds();
         account.getGroupStore().setMissingStorageIds();
+        account.getStickerStore().setMissingStorageIds();
 
         var needsMultiDeviceSync = false;
 
@@ -141,7 +155,11 @@ public class StorageHelper {
             needsForcePush = true;
         } else {
             try {
-                needsMultiDeviceSync = writeToStorage(storageKey, remoteManifest, needsForcePush);
+                needsMultiDeviceSync = writeToStorage(storageKey,
+                        remoteManifest,
+                        needsForcePush,
+                        fetchedRemoteManifest,
+                        identityConflictsPendingRepair);
             } catch (RetryLaterException e) {
                 // TODO retry later
                 return;
@@ -186,7 +204,8 @@ public class StorageHelper {
     private boolean readDataFromStorage(
             final StorageKey storageKey,
             final SignalStorageManifest localManifest,
-            final SignalStorageManifest remoteManifest
+            final SignalStorageManifest remoteManifest,
+            final Set<StorageId> identityConflictsPendingRepair
     ) throws IOException {
         var needsForcePush = false;
         try (final var connection = account.getAccountDatabase().getConnection()) {
@@ -213,7 +232,9 @@ public class StorageHelper {
                             remoteOnlyRecords.size());
                 }
 
-                final var listListPair = processKnownRecords(connection, remoteOnlyRecords);
+                final var listListPair = processKnownRecords(connection,
+                        remoteOnlyRecords,
+                        identityConflictsPendingRepair);
                 final var unknownInserts = listListPair.first();
                 final var updatedStorageIds = listListPair.second();
                 final var oldUnregisteredLocalOnlyIds = new HashSet<>(idDifference.localOnlyIds());
@@ -222,11 +243,14 @@ public class StorageHelper {
                     final var updated = account.getRecipientStore()
                             .removeStorageIdsFromLocalOnlyUnregisteredRecipients(connection,
                                     oldUnregisteredLocalOnlyIds);
+                    final var updatedStickers = account.getStickerStore()
+                            .removeStorageIdsFromLocalOnlyDeletedStickerPacks(connection, oldUnregisteredLocalOnlyIds);
 
-                    if (updated > 0) {
+                    if (updated > 0 || updatedStickers > 0) {
                         logger.warn(
-                                "Found {} records that were deleted remotely but only marked unregistered locally. Removed those from local store.",
-                                updated);
+                                "Found {} recipients and {} sticker packs that were deleted remotely but only marked deleted locally. Removed those from local store.",
+                                updated,
+                                updatedStickers);
                     }
                 }
 
@@ -253,7 +277,8 @@ public class StorageHelper {
 
     private void readRecordsWithPreviouslyUnknownTypes(
             final StorageKey storageKey,
-            final SignalStorageManifest remoteManifest
+            final SignalStorageManifest remoteManifest,
+            final Set<StorageId> identityConflictsPendingRepair
     ) throws IOException {
         try (final var connection = account.getAccountDatabase().getConnection()) {
             connection.setAutoCommit(false);
@@ -267,9 +292,8 @@ public class StorageHelper {
 
                 logger.debug("Found {} of the known-unknowns remotely.", remote.size());
 
-                processKnownRecords(connection, remote);
-                account.getUnknownStorageIdStore()
-                        .deleteUnknownStorageIds(connection, remote.stream().map(SignalStorageRecord::getId).toList());
+                processKnownRecords(connection, remote, identityConflictsPendingRepair);
+                account.getUnknownStorageIdStore().deleteUnknownStorageIds(connection, knownUnknownIds);
             }
             connection.commit();
         } catch (SQLException e) {
@@ -280,7 +304,9 @@ public class StorageHelper {
     private boolean writeToStorage(
             final StorageKey storageKey,
             final SignalStorageManifest remoteManifest,
-            final boolean needsForcePush
+            final boolean needsForcePush,
+            final boolean fetchedRemoteManifest,
+            final Set<StorageId> identityConflictsPendingRepair
     ) throws IOException, RetryLaterException {
         final WriteOperationResult remoteWriteOperation;
         try (final var connection = account.getAccountDatabase().getConnection()) {
@@ -290,10 +316,8 @@ public class StorageHelper {
             var idDifference = findIdDifference(remoteManifest.storageIds, localStorageIds);
             logger.debug("ID Difference :: {}", idDifference);
 
-            final var unknownOnlyLocal = idDifference.localOnlyIds()
-                    .stream()
-                    .filter(id -> !KNOWN_TYPES.contains(id.getType()))
-                    .toList();
+            final var unknownStorageIds = account.getUnknownStorageIdStore().getUnknownStorageIds(connection);
+            final var unknownOnlyLocal = findUnknownOnlyLocalStorageIds(idDifference.localOnlyIds(), unknownStorageIds);
 
             if (!unknownOnlyLocal.isEmpty()) {
                 logger.debug("Storage ids with unknown type: {} to delete", unknownOnlyLocal.size());
@@ -318,6 +342,28 @@ public class StorageHelper {
 
         if (remoteWriteOperation.isEmpty()) {
             logger.debug("No remote writes needed. Still at version: {}", remoteManifest.version);
+            storageSyncLoopDetector.onConverged();
+            return false;
+        }
+
+        final var onlyIdentityConflictsPendingRepair = containsOnlyIdentityConflictsPendingRepair(remoteWriteOperation,
+                identityConflictsPendingRepair);
+        if (onlyIdentityConflictsPendingRepair) {
+            logger.warn(
+                    "Deferring remote write until the profile fetch says whose identity key is correct. WriteOperationResult :: {}",
+                    remoteWriteOperation);
+            return false;
+        }
+
+        final var loopCheck = storageSyncLoopDetector.onWriteAttempt(remoteWriteOperation,
+                fetchedRemoteManifest,
+                false);
+        if (loopCheck instanceof StorageSyncLoopDetector.Decision.Denied denied) {
+            logger.warn(
+                    "Skipping remote write, another device is likely undoing it. Cause: {}, level: {}. WriteOperationResult :: {}",
+                    denied.cause(),
+                    denied.level(),
+                    remoteWriteOperation);
             return false;
         }
 
@@ -336,11 +382,18 @@ public class StorageHelper {
                         remoteWriteOperation.deletes());
         switch (result) {
             case WriteStorageRecordsResult.ConflictError ignored -> {
+                storageSyncLoopDetector.onWriteFailed();
                 logger.debug("Hit a conflict when trying to resolve the conflict! Retrying.");
                 throw new RetryLaterException();
             }
-            case WriteStorageRecordsResult.NetworkError networkError -> throw networkError.getException();
-            case WriteStorageRecordsResult.StatusCodeError statusCodeError -> throw statusCodeError.getException();
+            case WriteStorageRecordsResult.NetworkError networkError -> {
+                storageSyncLoopDetector.onWriteFailed();
+                throw networkError.getException();
+            }
+            case WriteStorageRecordsResult.StatusCodeError statusCodeError -> {
+                storageSyncLoopDetector.onWriteFailed();
+                throw statusCodeError.getException();
+            }
             case WriteStorageRecordsResult.Success ignored -> {
                 logger.debug("Saved new manifest. Now at version: {}", remoteWriteOperation.manifest().version);
                 storeManifestLocally(remoteWriteOperation.manifest());
@@ -348,6 +401,22 @@ public class StorageHelper {
             }
             default -> throw new IllegalStateException("Unexpected value: " + result);
         }
+    }
+
+    static List<StorageId> findUnknownOnlyLocalStorageIds(
+            final List<StorageId> localOnlyStorageIds,
+            final Set<StorageId> unknownStorageIds
+    ) {
+        return localOnlyStorageIds.stream().filter(unknownStorageIds::contains).toList();
+    }
+
+    static boolean containsOnlyIdentityConflictsPendingRepair(
+            final WriteOperationResult writeOperation,
+            final Set<StorageId> identityConflictsPendingRepair
+    ) {
+        return writeOperation.deletes().isEmpty() && !writeOperation.inserts().isEmpty() && writeOperation.inserts()
+                .stream()
+                .allMatch(record -> identityConflictsPendingRepair.contains(record.getId()));
     }
 
     private void forcePushToStorage(
@@ -366,6 +435,7 @@ public class StorageHelper {
         final Map<RecipientId, StorageId> newContactStorageIds;
         final Map<GroupIdV1, StorageId> newGroupV1StorageIds;
         final Map<GroupIdV2, StorageId> newGroupV2StorageIds;
+        final Map<StickerPackId, StorageId> newStickerPackStorageIds;
 
         try (final var connection = account.getAccountDatabase().getConnection()) {
             connection.setAutoCommit(false);
@@ -410,6 +480,19 @@ public class StorageHelper {
                 final var record = StorageSyncModels.localToRemoteRecord(group);
                 newStorageRecords.add(new SignalStorageRecord(storageId,
                         new StorageRecord.Builder().groupV2(record).build()));
+            }
+
+            final var stickerPacks = account.getStickerStore()
+                    .getStickerPacks(connection)
+                    .stream()
+                    .filter(pack -> pack.storageId() != null)
+                    .toList();
+            newStickerPackStorageIds = generateStickerPackStorageIds(stickerPacks);
+            for (final var stickerPack : stickerPacks) {
+                final var storageId = newStickerPackStorageIds.get(stickerPack.packId());
+                final var record = StorageSyncModels.localToRemoteRecord(stickerPack);
+                newStorageRecords.add(new SignalStorageRecord(storageId,
+                        new StorageRecord.Builder().stickerPack(record).build()));
             }
 
             connection.commit();
@@ -462,6 +545,7 @@ public class StorageHelper {
             connection.setAutoCommit(false);
             account.getRecipientStore().updateStorageIds(connection, newContactStorageIds);
             account.getGroupStore().updateStorageIds(connection, newGroupV1StorageIds, newGroupV2StorageIds);
+            account.getStickerStore().updateStorageIds(connection, newStickerPackStorageIds);
 
             // delete all unknown storage ids
             account.getUnknownStorageIdStore().deleteAllUnknownStorageIds(connection);
@@ -492,6 +576,14 @@ public class StorageHelper {
         return groupIds.stream()
                 .collect(Collectors.toMap(recipientId -> recipientId,
                         _ -> StorageId.forGroupV2(KeyUtils.createRawStorageId())));
+    }
+
+    private Map<StickerPackId, StorageId> generateStickerPackStorageIds(
+            final List<StickerPack> stickerPacks
+    ) {
+        return stickerPacks.stream()
+                .collect(Collectors.toMap(stickerPack -> stickerPack.packId(),
+                        _ -> StorageId.forStickerPack(KeyUtils.createRawStorageId())));
     }
 
     private void storeManifestLocally(
@@ -533,6 +625,7 @@ public class StorageHelper {
         storageIds.addAll(account.getUnknownStorageIdStore().getUnknownStorageIds(connection));
         storageIds.addAll(account.getGroupStore().getStorageIds(connection));
         storageIds.addAll(account.getRecipientStore().getStorageIds(connection));
+        storageIds.addAll(account.getStickerStore().getStorageIds(connection));
         storageIds.add(account.getRecipientStore().getSelfStorageId(connection));
         return storageIds;
     }
@@ -580,6 +673,14 @@ public class StorageHelper {
                         selfRecipient,
                         account.getUsernameLink());
                 yield new SignalStorageRecord(storageId, new StorageRecord.Builder().account(record).build());
+            }
+            case ManifestRecord.Identifier.Type.STICKER_PACK -> {
+                final var stickerPack = account.getStickerStore().getStickerPack(connection, storageId);
+                if (stickerPack == null) {
+                    throw new AssertionError("Missing local sticker pack model for storage id: " + storageId);
+                }
+                final var record = StorageSyncModels.localToRemoteRecord(stickerPack);
+                yield new SignalStorageRecord(storageId, new StorageRecord.Builder().stickerPack(record).build());
             }
             case null, default -> {
                 throw new AssertionError("Got unknown local storage record type: " + storageId);
@@ -637,7 +738,8 @@ public class StorageHelper {
 
     private Pair<List<StorageId>, List<StorageId>> processKnownRecords(
             final Connection connection,
-            List<SignalStorageRecord> records
+            List<SignalStorageRecord> records,
+            final Set<StorageId> identityConflictsPendingRepair
     ) throws SQLException {
         final var unknownRecords = new ArrayList<StorageId>();
         final var processedRecords = new ArrayList<StorageId>();
@@ -645,7 +747,18 @@ public class StorageHelper {
         final var accountRecordProcessor = new AccountRecordProcessor(account, connection, context.getJobExecutor());
         final var groupV1RecordProcessor = new GroupV1RecordProcessor(account, connection);
         final var groupV2RecordProcessor = new GroupV2RecordProcessor(account, connection);
-        final var contactRecordProcessor = new ContactRecordProcessor(account, connection, context.getJobExecutor());
+        final var contactRecordProcessor = new ContactRecordProcessor(account,
+                connection,
+                context.getJobExecutor(),
+                identityConflictsPendingRepair);
+        final var stickerPackRecordProcessor = new StickerPackRecordProcessor(account, connection);
+
+        final var contactRecords = records.stream()
+                .filter(record -> record.getProto().contact != null)
+                .map(record -> StorageRecordConvertersKt.toSignalContactRecord(record.getProto().contact,
+                        record.getId()))
+                .toList();
+        contactRecordProcessor.prepare(contactRecords);
 
         for (final var record : records) {
             if (record.getProto().account != null) {
@@ -664,6 +777,10 @@ public class StorageHelper {
                 logger.debug("Reading record {} of type contact", record.getId());
                 contactRecordProcessor.process(StorageRecordConvertersKt.toSignalContactRecord(record.getProto().contact,
                         record.getId()));
+            } else if (record.getProto().stickerPack != null) {
+                logger.debug("Reading record {} of type stickerPack", record.getId());
+                stickerPackRecordProcessor.process(StorageRecordConvertersKt.toSignalStickerPackRecord(record.getProto().stickerPack,
+                        record.getId()));
             } else {
                 unknownRecords.add(record.getId());
             }
@@ -672,6 +789,7 @@ public class StorageHelper {
         processedRecords.addAll(groupV1RecordProcessor.getUpdatedStorageIds());
         processedRecords.addAll(groupV2RecordProcessor.getUpdatedStorageIds());
         processedRecords.addAll(contactRecordProcessor.getUpdatedStorageIds());
+        processedRecords.addAll(stickerPackRecordProcessor.getUpdatedStorageIds());
 
         return new Pair<>(unknownRecords, processedRecords);
     }

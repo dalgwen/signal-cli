@@ -3,7 +3,7 @@
 signal-cli is a commandline interface for the [Signal messenger](https://signal.org/).
 It supports registering, verifying, sending and receiving messages.
 signal-cli uses a [patched libsignal-service-java](https://github.com/Turasa/libsignal-service-java),
-extracted from the [Signal-Android source code](https://github.com/signalapp/Signal-Android/tree/main/libsignal-service).
+extracted from the [Signal-Android source code](https://github.com/signalapp/Signal-Android/tree/main/lib/libsignal-service).
 For registering you need a phone number where you can receive SMS or incoming calls.
 
 signal-cli is primarily intended to be used on servers to notify admins of important events.
@@ -64,7 +64,19 @@ Important: The ACCOUNT is your phone number in international format and must inc
 should start with a "+" sign. (See [Wikipedia](https://en.wikipedia.org/wiki/List_of_country_calling_codes) for a list
 of all country codes.)
 
+* Link to an existing account
+
+  If you have an existing Signal account associated
+  with a number, you can link signal-cli to it with:
+
+      signal-cli link
+
 * Register a number (with SMS verification)
+
+  Alternatively, if you don't have an existing Signal
+  account, you can register one from signal-cli. Note
+  that this will unregister any existing client
+  associated with the same number.
 
       signal-cli -a ACCOUNT register
 

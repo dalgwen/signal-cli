@@ -1,8 +1,8 @@
 package org.asamk.signal.json;
 
-import io.micronaut.jsonschema.JsonSchema;
-
 import org.asamk.signal.manager.api.MessageEnvelope;
+
+import io.micronaut.jsonschema.JsonSchema;
 
 @JsonSchema(title = "Attachment")
 record JsonAttachment(
@@ -13,7 +13,8 @@ record JsonAttachment(
         Integer width,
         Integer height,
         String caption,
-        Long uploadTimestamp
+        Long uploadTimestamp,
+        boolean isVoiceNote
 ) {
 
     static JsonAttachment from(MessageEnvelope.Data.Attachment attachment) {
@@ -32,6 +33,7 @@ record JsonAttachment(
                 width,
                 height,
                 caption,
-                uploadTimestamp);
+                uploadTimestamp,
+                attachment.isVoiceNote());
     }
 }

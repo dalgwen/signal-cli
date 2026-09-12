@@ -15,6 +15,7 @@ import org.asamk.signal.manager.internal.RegistrationManagerImpl;
 import org.asamk.signal.manager.storage.SignalAccount;
 import org.asamk.signal.manager.storage.accounts.AccountsStore;
 import org.asamk.signal.manager.util.KeyUtils;
+import org.signal.core.models.ServiceId.ACI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.whispersystems.signalservice.api.push.exceptions.DeprecatedVersionException;
@@ -67,7 +68,7 @@ public class SignalAccountFiles {
     public MultiAccountManager initMultiAccountManager() throws IOException {
         final var managerPairs = accountsStore.getAllAccounts().parallelStream().map(a -> {
             try {
-                return new Pair<Manager, Throwable>(initManager(a.number(), a.path()), null);
+                return new Pair<Manager, Throwable>(initManagerByNumber(a.number(), a.path()), null);
             } catch (NotRegisteredException e) {
                 logger.warn("Ignoring {}: {} ({})", a.number(), e.getMessage(), e.getClass().getSimpleName());
                 return null;
@@ -90,15 +91,31 @@ public class SignalAccountFiles {
         return new MultiAccountManagerImpl(managers, this);
     }
 
-    public Manager initManager(String number) throws IOException, NotRegisteredException, AccountCheckException {
+    public Manager initManagerByNumber(String number) throws IOException, NotRegisteredException, AccountCheckException {
         final var accountPath = accountsStore.getPathByNumber(number);
-        return this.initManager(number, accountPath);
+        return this.initManagerByNumber(number, accountPath);
     }
 
-    private Manager initManager(
+    public Manager initManagerByAci(String aciStr) throws IOException, NotRegisteredException, AccountCheckException {
+        final var aci = ACI.parseOrThrow(aciStr);
+        final var accountPath = accountsStore.getPathByAci(aci);
+        return this.initManagerByAci(aci, accountPath);
+    }
+
+    private Manager initManagerByNumber(
             String number,
             String accountPath
     ) throws IOException, NotRegisteredException, AccountCheckException {
+        final var account = loadAccount(accountPath);
+        if (!number.equals(account.getNumber())) {
+            account.close();
+            throw new IOException("Number in account file doesn't match expected number: " + account.getNumber());
+        }
+
+        return initManagerFromAccount(number, accountPath, account);
+    }
+
+    private SignalAccount loadAccount(final String accountPath) throws NotRegisteredException, IOException {
         if (accountPath == null) {
             throw new NotRegisteredException();
         }
@@ -106,12 +123,27 @@ public class SignalAccountFiles {
             throw new NotRegisteredException();
         }
 
-        var account = SignalAccount.load(pathConfig.dataPath(), accountPath, true, settings);
-        if (!number.equals(account.getNumber())) {
+        return SignalAccount.load(pathConfig.dataPath(), accountPath, true, settings);
+    }
+
+    private Manager initManagerByAci(
+            ACI aci,
+            String accountPath
+    ) throws IOException, NotRegisteredException, AccountCheckException {
+        final var account = loadAccount(accountPath);
+        if (!aci.equals(account.getAci())) {
             account.close();
-            throw new IOException("Number in account file doesn't match expected number: " + account.getNumber());
+            throw new IOException("ACI in account file doesn't match expected ACI: " + account.getAci());
         }
 
+        return initManagerFromAccount(aci.toString(), accountPath, account);
+    }
+
+    private ManagerImpl initManagerFromAccount(
+            final String identifier,
+            final String accountPath,
+            final SignalAccount account
+    ) throws NotRegisteredException, IOException, AccountCheckException {
         if (!account.isRegistered()) {
             account.close();
             throw new NotRegisteredException();
@@ -136,7 +168,7 @@ public class SignalAccountFiles {
             throw new IOException("signal-cli version is too old for the Signal-Server, please update.");
         } catch (IOException e) {
             manager.close();
-            throw new AccountCheckException("Error while checking account " + number + ": " + e.getMessage(), e);
+            throw new AccountCheckException("Error while checking account " + identifier + ": " + e.getMessage(), e);
         }
 
         if (account.getServiceEnvironment() == null) {

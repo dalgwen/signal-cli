@@ -8,6 +8,7 @@ import org.asamk.signal.manager.storage.groups.GroupInfoV1;
 import org.asamk.signal.manager.storage.groups.GroupInfoV2;
 import org.asamk.signal.manager.storage.identities.IdentityInfo;
 import org.asamk.signal.manager.storage.recipients.Recipient;
+import org.asamk.signal.manager.storage.stickers.StickerPack;
 import org.signal.core.models.ServiceId.ACI;
 import org.signal.core.models.ServiceId.PNI;
 import org.signal.core.util.UuidUtil;
@@ -16,12 +17,14 @@ import org.whispersystems.signalservice.api.storage.SignalAccountRecord;
 import org.whispersystems.signalservice.api.storage.SignalContactRecord;
 import org.whispersystems.signalservice.api.storage.SignalGroupV1Record;
 import org.whispersystems.signalservice.api.storage.SignalGroupV2Record;
+import org.whispersystems.signalservice.api.storage.SignalStickerPackRecord;
 import org.whispersystems.signalservice.internal.storage.protos.AccountRecord;
 import org.whispersystems.signalservice.internal.storage.protos.AccountRecord.UsernameLink;
 import org.whispersystems.signalservice.internal.storage.protos.ContactRecord;
 import org.whispersystems.signalservice.internal.storage.protos.ContactRecord.IdentityState;
 import org.whispersystems.signalservice.internal.storage.protos.GroupV1Record;
 import org.whispersystems.signalservice.internal.storage.protos.GroupV2Record;
+import org.whispersystems.signalservice.internal.storage.protos.StickerPackRecord;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -92,9 +95,13 @@ public final class StorageSyncModels {
 
     public static ContactRecord localToRemoteRecord(Recipient recipient, IdentityInfo identity) {
         final var address = recipient.getAddress();
+        final var aciPresent = address.aci().isPresent();
+
         final var builder = SignalContactRecord.Companion.newBuilder(recipient.getStorageRecord())
                 .e164(address.number().orElse(""))
                 .username(address.username().orElse(""))
+                .pniSignatureVerified(address.pni().map(PNI::isValid).orElse(false)
+                        && recipient.isPniSignatureVerified())
                 .profileKey(recipient.getProfileKey() == null
                         ? ByteString.EMPTY
                         : ByteString.of(recipient.getProfileKey().serialize()));
@@ -117,6 +124,7 @@ public final class StorageSyncModels {
                     .nickname(getNicknameRemoteRecord(recipient.getContact()))
                     .note(emptyIfNull(recipient.getContact().note()))
                     .blocked(recipient.getContact().isBlocked())
+                    .blockedAtTimestamp(recipient.getContact().blockedAt())
                     .whitelisted(recipient.getContact().isProfileSharingEnabled())
                     .mutedUntilTimestamp(recipient.getContact().muteUntil())
                     .hideStory(recipient.getContact().hideStory())
@@ -126,7 +134,7 @@ public final class StorageSyncModels {
                     .archived(recipient.getContact().isArchived())
                     .hidden(recipient.getContact().isHidden());
         }
-        if (identity != null) {
+        if (identity != null && aciPresent) {
             builder.identityKey(ByteString.of(identity.getIdentityKey().serialize()))
                     .identityState(localToRemote(identity.getTrustLevel()));
         }
@@ -155,7 +163,25 @@ public final class StorageSyncModels {
         final var builder = SignalGroupV2Record.Companion.newBuilder(group.getStorageRecord());
         builder.masterKey(ByteString.of(group.getMasterKey().serialize()));
         builder.blocked(group.isBlocked());
+        builder.blockedAtTimestamp(group.getBlockedAt());
         builder.whitelisted(group.isProfileSharingEnabled());
+        return builder.build();
+    }
+
+    public static StickerPackRecord localToRemoteRecord(StickerPack stickerPack) {
+        final var builder = SignalStickerPackRecord.Companion.newBuilder(stickerPack.storageRecord());
+        builder.packId(ByteString.of(stickerPack.packId().serialize()));
+
+        if (stickerPack.deletedTimestamp() > 0) {
+            builder.packKey(ByteString.EMPTY);
+            builder.position(0);
+            builder.deletedAtTimestamp(stickerPack.deletedTimestamp());
+        } else {
+            builder.packKey(ByteString.of(stickerPack.packKey()));
+            builder.position(stickerPack.position());
+            builder.deletedAtTimestamp(0);
+        }
+
         return builder.build();
     }
 
